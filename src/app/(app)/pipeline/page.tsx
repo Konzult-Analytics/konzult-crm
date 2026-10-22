@@ -53,7 +53,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
               href={`/pipeline?track=${t}`}
               role="tab"
               aria-selected={t === track}
-              className={`chip ${t === track ? "border-accent bg-accent text-white" : ""}`}
+              className="chip"
             >
               {TRACK_LABEL[t]}s
             </Link>

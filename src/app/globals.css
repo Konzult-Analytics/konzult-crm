@@ -42,187 +42,199 @@
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
+
+/* Element defaults: utilities on an element override these. */
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  
+  input,
+  select,
+  textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--panel);
+    color: var(--ink);
+    padding: 0.65rem 0.75rem;
+    font-size: 1rem; /* 16px stops iOS zooming into fields */
+  }
+  
+  textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+  }
+  
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: auto;
+    padding: 0;
+    accent-color: var(--accent);
+  }
+  
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background: var(--panel);
-  color: var(--ink);
-  padding: 0.65rem 0.75rem;
-  font-size: 1rem; /* 16px stops iOS zooming into fields */
-}
+@layer components {
+  a.link {
+    color: var(--accent-strong);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--ink-soft);
+  }
+  
+  .badge-accent {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
+  
+  .badge-danger {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  
+  /* Radio options shown as tap-friendly pills. */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--panel);
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .chip:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  
+  .chip:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  
+  .field-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    min-height: 2.75rem; /* comfortable tap target */
+  }
+  
+  .btn:disabled {
+    opacity: 0.6;
+  }
+  
+  .btn-accent {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  
+  .btn-accent:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+  
+  .btn-ghost {
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--ink-soft);
+  }
+  
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .auth-card {
+    margin: 3rem auto;
+    max-width: 24rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--panel);
+    padding: 1.75rem 1.5rem;
+  }
+  
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--panel);
+    padding: 1.25rem;
+  }
+  
+  .qr {
+    display: block;
+    margin: 0 auto;
+    width: 12rem;
+    height: 12rem;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.5rem;
+  }
 
-textarea {
-  min-height: 5.5rem;
-  resize: vertical;
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-  width: auto;
-  padding: 0;
-  accent-color: var(--accent);
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-a.link {
-  color: var(--accent-strong);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.1rem 0.55rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--ink-soft);
-}
-
-.badge-accent {
-  border-color: var(--accent);
-  color: var(--accent-strong);
-}
-
-.badge-danger {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-/* Radio options shown as tap-friendly pills. */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.5rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.chip input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.chip:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.chip:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.field-label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  padding: 0.65rem 1rem;
-  font-weight: 600;
-  min-height: 2.75rem; /* comfortable tap target */
-}
-
-.btn:disabled {
-  opacity: 0.6;
-}
-
-.btn-accent {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.btn-accent:hover:not(:disabled) {
-  background: var(--accent-strong);
-}
-
-.btn-ghost {
-  border: 1px solid var(--line);
-  color: var(--ink);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  border-color: var(--ink-soft);
-}
-
-.btn-sm {
-  min-height: 2.25rem;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.875rem;
-}
-
-.auth-card {
-  margin: 3rem auto;
-  max-width: 24rem;
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  background: var(--panel);
-  padding: 1.75rem 1.5rem;
-}
-
-.card {
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  background: var(--panel);
-  padding: 1.25rem;
-}
-
-.qr {
-  display: block;
-  margin: 0 auto;
-  width: 12rem;
-  height: 12rem;
-  border-radius: 0.5rem;
-  background: #ffffff;
-  padding: 0.5rem;
+  .chip[aria-selected="true"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
 }

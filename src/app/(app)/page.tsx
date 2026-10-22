@@ -32,6 +32,11 @@ function journeyHref(j: { person_id: string | null; organisation_id: string | nu
   return j.person_id ? `/people/${j.person_id}` : `/organisations/${j.organisation_id}`;
 }
 
+function stageText(j: { track: string | null; stage: string | null }) {
+  const stage = stageLabel(j.track ?? "", j.stage ?? "");
+  return j.track === "partner" ? `Partner · ${stage}` : stage;
+}
+
 export default async function TodayPage() {
   const { supabase } = await requireMfaSession();
   const today = saDate();
@@ -106,11 +111,11 @@ export default async function TodayPage() {
           <ul className="card divide-y divide-line p-0">
             {cold.map((j) => (
               <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <Link href={journeyHref(j)} className="min-w-0 flex-1 font-medium hover:underline">
+                <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
                   {j.display_name}
                 </Link>
                 <span className="text-sm text-ink-soft">
-                  {stageLabel(j.track ?? "", j.stage ?? "")} · touched {daysAgo(j.last_touch_at ?? j.stage_changed_at, today)}
+                  {stageText(j)} · touched {daysAgo(j.last_touch_at ?? j.stage_changed_at, today)}
                 </span>
                 {j.person_id && (
                   <Link href={`/log?person=${j.person_id}`} className="btn btn-ghost btn-sm">
@@ -128,7 +133,7 @@ export default async function TodayPage() {
           <ul className="card divide-y divide-line p-0">
             {revisit.map((j) => (
               <li key={j.id} className="flex flex-wrap items-center gap-x-3 px-4 py-3">
-                <Link href={journeyHref(j)} className="min-w-0 flex-1 font-medium hover:underline">
+                <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
                   {j.display_name}
                 </Link>
                 <span className="text-sm text-ink-soft">
@@ -145,10 +150,12 @@ export default async function TodayPage() {
           <ul className="card divide-y divide-line p-0">
             {awaiting.slice(0, AWAITING_SHOWN).map((j) => (
               <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <Link href={journeyHref(j)} className="min-w-0 flex-1 font-medium hover:underline">
+                <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
                   {j.display_name}
                 </Link>
-                <span className="text-sm text-ink-soft">added {daysAgo(j.opened_at, today)}</span>
+                <span className="text-sm text-ink-soft">
+                  {j.track === "partner" ? "Partner · " : ""}added {daysAgo(j.opened_at, today)}
+                </span>
                 {j.person_id && (
                   <Link href={`/log?person=${j.person_id}`} className="btn btn-ghost btn-sm">
                     Log first contact
@@ -181,7 +188,7 @@ export default async function TodayPage() {
           <ul className="card divide-y divide-line p-0">
             {birthdays.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-3">
-                <Link href={`/people/${p.id}`} className="min-w-0 flex-1 font-medium hover:underline">
+                <Link href={`/people/${p.id}`} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
                   {personName(p)}
                 </Link>
                 <span className="text-sm text-ink-soft">
