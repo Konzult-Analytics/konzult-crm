@@ -96,6 +96,29 @@ export async function updatePerson(personId: string, _prev: FormState, formData:
   redirect(`/people/${personId}`);
 }
 
+const consentSchema = z.object({
+  marketing_consent: z.enum(["unknown", "granted", "refused"]),
+  marketing_consent_note: optionalText(500),
+});
+
+/** POPIA s69: record whether this person agreed to electronic marketing, and how. */
+export async function setConsent(personId: string, formData: FormData): Promise<void> {
+  const { supabase } = await requireMfaSession();
+  const parsed = consentSchema.safeParse(fields(formData));
+  if (!parsed.success || !z.uuid().safeParse(personId).success) return;
+  const { marketing_consent, marketing_consent_note } = parsed.data;
+  const { error } = await supabase
+    .from("people")
+    .update({
+      marketing_consent,
+      marketing_consent_note: marketing_consent === "unknown" ? null : marketing_consent_note,
+      marketing_consent_at: marketing_consent === "unknown" ? null : new Date().toISOString(),
+    })
+    .eq("id", personId);
+  if (error) console.error("set consent failed", error);
+  revalidatePath(`/people/${personId}`);
+}
+
 export async function startJourney(personId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const { supabase } = await requireMfaSession();
   const parsed = journeySchema.safeParse(fields(formData));

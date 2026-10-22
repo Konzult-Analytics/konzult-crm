@@ -9,6 +9,7 @@ import { daysAgo, formatDate, saDate } from "@/lib/crm/dates";
 import { exitReasonOptions, personOptions, sourceOptions } from "@/lib/crm/lookups";
 import { personName, whatsappNumber } from "@/lib/crm/people";
 import { TRACK_LABEL, TRACKS, isTrack, stageLabel } from "@/lib/crm/stages";
+import ConsentControl from "./ConsentControl";
 import StartJourneyForm from "./StartJourneyForm";
 
 const NOTICES: Record<string, string> = {
@@ -28,7 +29,7 @@ export default async function PersonPage({
   const { data: person } = await supabase
     .from("people")
     .select(
-      "id, first_name, last_name, email, phone, role_title, bni_chapter, is_bni_member, birthday, notes, organisations(id, name)"
+      "id, first_name, last_name, email, phone, role_title, bni_chapter, is_bni_member, birthday, notes, marketing_consent, marketing_consent_at, marketing_consent_note, organisations(id, name)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -142,6 +143,14 @@ export default async function PersonPage({
           )}
         </dl>
         {person.notes && <p className="whitespace-pre-line break-words text-sm">{person.notes}</p>}
+        <div className="border-t border-line pt-3">
+          <ConsentControl
+            personId={person.id}
+            status={person.marketing_consent}
+            at={person.marketing_consent_at}
+            note={person.marketing_consent_note}
+          />
+        </div>
       </section>
 
       <section className="space-y-3">

@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
   // (~300 MB) has filled it mid-request before. Remove when space allows.
   experimental: {
     turbopackFileSystemCacheForDev: false,
+    // Spreadsheet imports upload through a server action; the default cap is 1 MB.
+    serverActions: { bodySizeLimit: "5mb" },
   },
   // HSTS is sent by Vercel. Once live, these must not be removed without a
   // security review.

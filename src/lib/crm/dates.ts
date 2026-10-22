@@ -63,7 +63,7 @@ export function formatDate(date: string | Date | null | undefined): string {
 }
 
 export function formatDateTime(at: string | Date): string {
-  return new Intl.DateTimeFormat("en-ZA", {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: ZONE,
     day: "numeric",
     month: "short",
@@ -79,6 +79,11 @@ export function daysAgo(at: string | Date | null | undefined, today: string = sa
   const days = daysBetween(saDate(new Date(at)), today);
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
+  if (days >= 365) {
+    const years = Math.floor(days / 365);
+    return years === 1 ? "a year ago" : `${years} years ago`;
+  }
+  if (days >= 60) return `${Math.floor(days / 30)} months ago`;
   return `${days} days ago`;
 }
 

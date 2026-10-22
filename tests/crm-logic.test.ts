@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { addDays, daysUntilBirthday, dueLabel, saDate, saLocalToIso } from "@/lib/crm/dates";
+import { addDays, daysAgo, daysUntilBirthday, dueLabel, saDate, saLocalToIso } from "@/lib/crm/dates";
 import { whatsappNumber } from "@/lib/crm/people";
 import { advanceFor, isInProgress } from "@/lib/crm/stages";
 import { birthdaysSoon, isGoingCold, splitTasks } from "@/lib/crm/today";
@@ -12,6 +12,14 @@ describe("South African dates", () => {
 
   it("reads a typed time as South African time", () => {
     expect(saLocalToIso("2026-10-22T09:30")).toBe("2026-10-22T07:30:00.000Z");
+  });
+
+  it("says how long ago in words a person would use", () => {
+    expect(daysAgo("2026-10-21T10:00:00Z", "2026-10-22")).toBe("yesterday");
+    expect(daysAgo("2026-10-01T10:00:00Z", "2026-10-22")).toBe("21 days ago");
+    expect(daysAgo("2026-07-01T10:00:00Z", "2026-10-22")).toBe("3 months ago");
+    expect(daysAgo("2022-09-20T07:00:00Z", "2026-10-22")).toBe("4 years ago");
+    expect(daysAgo(null)).toBe("never");
   });
 
   it("labels due dates", () => {

@@ -37,9 +37,14 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">People</h1>
-        <Link href="/people/new" className="btn btn-accent btn-sm">
-          Add someone
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/import" className="btn btn-ghost btn-sm">
+            Import
+          </Link>
+          <Link href="/people/new" className="btn btn-accent btn-sm">
+            Add someone
+          </Link>
+        </div>
       </div>
 
       <form className="flex gap-2" role="search">
