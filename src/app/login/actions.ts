@@ -26,6 +26,8 @@ export async function login(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
+    // The reason stays server-side; the screen gets one generic message.
+    console.error("login refused", { code: error.code, status: error.status });
     return { error: "Login failed. Check your email and password." };
   }
 
