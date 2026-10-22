@@ -54,9 +54,11 @@ Konzult's internal CRM and Zander's daily driver. It tracks every prospect and r
 
 | Env | URL | Database | Purpose |
 |---|---|---|---|
-| Local | localhost:3000 | `konzult-crm-dev` | Building; fake seed data only |
-| Preview | Vercel preview URLs | `konzult-crm-dev` | Branch review; fake data only |
-| Production | TBD | `konzult-crm-prod` | Real contacts |
+| Local | localhost:3000 | `konzult-crm-dev` (`wuythvorfkujurxjrnap`) | Building; fake seed data only |
+| Preview | Vercel preview URLs | `konzult-crm-dev` (`wuythvorfkujurxjrnap`) | Branch review; fake data only |
+| Production | TBD | `konzult-crm-prod` (`jqrxpggfxqcmjbtignld`) | Real contacts |
+
+Both projects: org `jixzulbkfppjenmfpbne`, West EU (Ireland). Before any `supabase db push` or `config push`, check `supabase/.temp/project-ref` names the intended project. The CLI pushes to whichever project is linked. Preview `config push` with `echo n | supabase config push` first: the CLI's local defaults can silently weaken remote settings.
 
 **Env switching:** `.env.local` locally; Vercel environment variables per environment (Preview → dev, Production → prod).
 
@@ -111,7 +113,7 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 ## 9. Current state and deferred items
 
 - **2026-10-22:** spec v0.1 approved: stage names and exit reasons as drafted, two new Supabase projects.
-- **2026-10-22:** Phase 0 code committed on `feature/phase0-setup` (local only, no remote yet): login + compulsory two-factor, workspace migration, phone-install manifest and icons. Tests, typecheck, lint and build pass. Waiting on the Supabase project IDs, then `docs/SETUP.md` steps 2–8.
+- **2026-10-22:** Phase 0 code committed on `feature/phase0-setup` (local only, no remote yet): login + compulsory two-factor, workspace migration, phone-install manifest and icons. Tests, typecheck, lint and build pass. Dev database set up (migration `20261022120000` applied; sign-ups off, 12-character minimum password, TOTP on). App runs locally against dev; login screen and wrong-password path verified. Next: Zander creates the dev login (`docs/SETUP.md` step 4), then GitHub/Vercel and prod (steps 6–8).
 - **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5).
 
 ---
