@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Konzult CI (2026-konzult-analytics-CI-V2): orange #FF3210, ink #1A1714, cream #F7F4EE. */
+:root {
+  color-scheme: light;
+  --paper: #f7f4ee;
+  --panel: #ffffff;
+  --ink: #1a1714;
+  --ink-soft: #6b655e;
+  --line: #e4ded3;
+  --accent: #ff3210;
+  --accent-strong: #e02a0e;
+  --on-accent: #ffffff;
+  --good: #1f7a3a;
+  --danger: #c62a12;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #141414;
+    --panel: #1d1b19;
+    --ink: #f0f0f0;
+    --ink-soft: #9a9a9a;
+    --line: #34302c;
+    --accent: #ff4a2b;
+    --accent-strong: #ff3210;
+    --good: #6fcf8a;
+    --danger: #ff7a66;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-good: var(--good);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem; /* 16px stops iOS zooming into fields */
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  min-height: 2.75rem; /* comfortable tap target */
+}
+
+.btn:disabled {
+  opacity: 0.6;
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.btn-ghost {
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.auth-card {
+  margin: 3rem auto;
+  max-width: 24rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--panel);
+  padding: 1.75rem 1.5rem;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--panel);
+  padding: 1.25rem;
+}
+
+.qr {
+  display: block;
+  margin: 0 auto;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 0.5rem;
+}
