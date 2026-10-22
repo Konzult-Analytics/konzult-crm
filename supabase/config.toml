@@ -412,3 +412,7 @@ project_id = "jqrxpggfxqcmjbtignld"
 [remotes.production.auth]
 site_url = "https://konzult-crm.vercel.app"
 additional_redirect_urls = ["https://konzult-crm.vercel.app"]
+
+# Fake sample data never goes to production (see supabase/seed.sql).
+[remotes.production.db.seed]
+enabled = false
