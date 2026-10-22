@@ -56,7 +56,9 @@ Konzult's internal CRM and Zander's daily driver. It tracks every prospect and r
 |---|---|---|---|
 | Local | localhost:3000 | `konzult-crm-dev` (`wuythvorfkujurxjrnap`) | Building; fake seed data only |
 | Preview | Vercel preview URLs | `konzult-crm-dev` (`wuythvorfkujurxjrnap`) | Branch review; fake data only |
-| Production | TBD | `konzult-crm-prod` (`jqrxpggfxqcmjbtignld`) | Real contacts |
+| Production | https://konzult-crm.vercel.app | `konzult-crm-prod` (`jqrxpggfxqcmjbtignld`) | Real contacts |
+
+Vercel: team `konzult-analytics-projects`, project `konzult-crm`, functions pinned to `dub1` by `vercel.json`. Env vars are scoped per environment (Production → prod, Preview → dev); the URL vars are Config type, and Zander enters the publishable-key values himself.
 
 Both projects: org `jixzulbkfppjenmfpbne`, West EU (Ireland). Before any `supabase db push` or `config push`, check `supabase/.temp/project-ref` names the intended project. The CLI pushes to whichever project is linked. Preview `config push` with `echo n | supabase config push` first: the CLI's local defaults can silently weaken remote settings.
 
