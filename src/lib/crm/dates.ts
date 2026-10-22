@@ -59,7 +59,7 @@ export function daysUntilBirthday(birthday: string, today: string): number {
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "";
   const d = typeof date === "string" && date.length === 10 ? new Date(`${date}T12:00:00${OFFSET}`) : new Date(date);
-  return new Intl.DateTimeFormat("en-ZA", { timeZone: ZONE, day: "numeric", month: "short", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("en-GB", { timeZone: ZONE, day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
 export function formatDateTime(at: string | Date): string {

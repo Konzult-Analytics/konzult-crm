@@ -22,6 +22,14 @@ export default function JourneyControls({ journey, reasons }: { journey: Journey
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // The close form unmounts the moment the journey closes, so it can't reset
+  // `closing` itself; reset it whenever the status changes instead.
+  const [seenStatus, setSeenStatus] = useState(journey.status);
+  if (seenStatus !== journey.status) {
+    setSeenStatus(journey.status);
+    setClosing(null);
+  }
+
   const run = (fn: () => Promise<{ error: string } | null>) =>
     startTransition(async () => {
       const result = await fn();

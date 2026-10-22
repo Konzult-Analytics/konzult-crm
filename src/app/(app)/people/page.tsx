@@ -81,7 +81,9 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
                       </span>
                     ))}
                 </span>
-                <span className="w-full text-xs text-ink-soft sm:w-auto">Last touch {daysAgo(p.lastTouch)}</span>
+                <span className="w-full text-xs text-ink-soft sm:w-auto">
+                  {p.lastTouch ? `Last touch ${daysAgo(p.lastTouch)}` : "No touches yet"}
+                </span>
               </Link>
             </li>
           ))}

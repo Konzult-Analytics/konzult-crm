@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   return (
     <>
       <header className="-mx-4 border-b border-line bg-panel">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 pt-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-3">
           <Link href="/" className="whitespace-nowrap text-lg font-semibold">
             Konzult <span className="text-accent">CRM</span>
           </Link>
@@ -20,11 +20,11 @@ export default async function AppLayout({ children }: Readonly<{ children: React
             <SignOutButton className="btn-sm" />
           </div>
         </div>
-        <div className="mx-auto max-w-5xl px-4">
+        <div className="mx-auto max-w-6xl px-4">
           <Nav />
         </div>
       </header>
-      <main className="mx-auto max-w-5xl py-6">{children}</main>
+      <main className="mx-auto max-w-6xl py-6">{children}</main>
     </>
   );
 }

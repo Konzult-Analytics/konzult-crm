@@ -78,7 +78,9 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
                     {j.display_name}
                   </Link>
                 )}
-                <span className="text-ink-soft">· last touch {daysAgo(j.last_touch_at, today)}</span>
+                <span className="text-ink-soft">
+                  · {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
+                </span>
               </li>
             ))}
           </ul>

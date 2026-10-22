@@ -68,15 +68,17 @@ export default function Board({
           {error}
         </p>
       )}
-      <div className="-mx-4 overflow-x-auto px-4 pb-2">
-        <div className="flex gap-3" style={{ minWidth: `${columns.length * 15}rem` }}>
+      {/* relative: the cards' visually-hidden labels are absolutely positioned and
+          would otherwise escape this scroller and widen the whole page on phones. */}
+      <div className="relative -mx-4 overflow-x-auto px-4 pb-2">
+        <div className="flex gap-3">
           {columns.map((col) => {
             const colCards = cards.filter((c) => c.stage === col.key);
             return (
               <section
                 key={col.key}
                 aria-label={col.label}
-                className={`flex w-60 shrink-0 flex-col rounded-xl border bg-paper p-2 sm:w-64 ${
+                className={`flex w-60 shrink-0 flex-col rounded-xl border bg-paper p-2 lg:w-auto lg:min-w-0 lg:flex-1 lg:shrink ${
                   overColumn === col.key ? "border-accent" : "border-line"
                 }`}
                 onDragOver={(e) => {
@@ -121,7 +123,7 @@ export default function Board({
                       </div>
                       <p className="text-xs text-ink-soft">
                         {card.stageChangedAt && `${daysBetween(saDate(new Date(card.stageChangedAt)), today)}d in stage · `}
-                        touched {daysAgo(card.lastTouchAt, today)}
+                        {card.lastTouchAt ? `touched ${daysAgo(card.lastTouchAt, today)}` : "no touches yet"}
                       </p>
                       {card.nextTaskOn && (
                         <p className={`text-xs ${card.nextTaskOn < today ? "text-danger" : "text-ink-soft"}`}>
@@ -133,7 +135,7 @@ export default function Board({
                       </label>
                       <select
                         id={`move-${card.id}`}
-                        className="py-1.5 text-sm"
+                        className="py-1.5 sm:text-sm"
                         value={card.stage}
                         disabled={pendingId === card.id}
                         onChange={(e) => move(card, e.target.value)}

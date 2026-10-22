@@ -77,8 +77,13 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **Auth:** email + password, then a compulsory authenticator-app code (Supabase TOTP MFA). Sign-ups are off; accounts are created in the Supabase dashboard. The first account becomes owner of the "Konzult" workspace (trigger in the first migration). `src/lib/auth/routing.ts` decides every redirect (unit-tested); `src/proxy.ts` applies it; pages behind login also call `requireMfaSession()`. All Supabase calls are server-side, and the CSP allows only this origin.
 - **Login attempt limits** come from Supabase Auth, which every sign-in and code check passes through. Because calls come from the server, they share one IP bucket. For a single-user tool that's acceptable: a brute-force attempt also briefly locks out the owner. Revisit if the team grows.
 - Every table has `workspace_id`; RLS scopes rows to workspace members. Every public table also gets the restrictive `"two-factor required"` policy (aal2); `tests/rls.test.ts` fails for any table without it.
-- Stage changes go through one server action that also writes `journey_stage_history`. Never update `journeys.stage` directly.
-- Closing a journey (lost / parked) requires an exit reason. Enforce this in the database, not only in the UI.
+- `journey_stage_history` is written by the `private.record_stage_change` trigger on every stage or status change. The app only reads it, and it is not insertable by the `authenticated` role.
+- Closing a journey (lost / parked) requires an exit reason, and parking a revisit date. Check constraints on `journeys` enforce both.
+- `workspace_id` defaults to `private.my_workspace_id()`, so the app never passes it. Composite foreign keys `(workspace_id, id)` keep every link inside one workspace.
+- Logging a touch advances the journey by the spec's entry rules (`advanceFor` in `src/lib/crm/stages.ts`): first outreach → Contacted; a booked or held meeting → Meeting / One-to-one held. Moves are forward only.
+- "Today" and every displayed date use South African time (`src/lib/crm/dates.ts`). Servers run in Dublin (UTC).
+- Global CSS lives in Tailwind's `@layer base` (elements) and `@layer components` (`.btn`, `.card`, `.chip`…), so utility classes can override them. Never add unlayered element styles.
+- Database types are generated: run `pnpm db:types` after a migration reaches dev.
 - Server actions live next to their pages (`app/**/actions.ts`). All writes and AI calls are server-side.
 
 ---
@@ -111,6 +116,15 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 2. Include `workspace_id`, enable RLS, add the restrictive `"two-factor required"` policy and the membership policies (`private.is_workspace_member(workspace_id)`), and set grants explicitly (`revoke all … from anon`).
 3. Extend `tests/rls.test.ts` with read and write probes for the new table; `pnpm test` must pass.
 4. Apply to dev with `supabase db push` while linked to dev; prod only with Zander's go-ahead.
+5. `pnpm db:types` to regenerate `src/lib/supabase/database.types.ts`.
+
+### Dev sample data
+
+`supabase/seed.sql` holds fake people (`@example.test`). Load it with `supabase db push --include-seed` while linked to dev. It is idempotent. Three things stop it reaching production: `[remotes.production.db.seed] enabled = false`, a guard that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guard.
+
+### Browser checks as the dev test login
+
+`.env.local` holds `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD` and `E2E_TEST_TOTP_SECRET`. This login exists only in `konzult-crm-dev` and is a member of the Konzult workspace there (added by the seed). Log in at localhost and get the two-factor code from `node scripts/totp.mjs`. Never repeat these values in chat.
 
 ---
 
@@ -118,7 +132,10 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 
 - **2026-10-22:** spec v0.1 approved: stage names and exit reasons as drafted, two new Supabase projects.
 - **2026-10-22:** Phase 0 code on `feature/phase0-setup`: login + compulsory two-factor, workspace migration, phone-install manifest and icons. Tests, typecheck, lint and build pass. Dev database set up (migration `20261022120000` applied; sign-ups off, 12-character minimum password, TOTP on). App runs locally against dev. Zander's dev login, two-factor enrolment and the set-up check (workspace read through RLS) all passed end to end. Pushed to GitHub `Konzult-Analytics/konzult-crm` (HTTPS via Git Credential Manager): `main` holds only an empty initial commit; Phase 0 sits on `feature/phase0-setup` and reaches `main` via pull request after the Vercel preview is checked. Vercel env vars set (Production → prod, Preview → dev). Prod database set up on 2026-10-22 with Zander's go-ahead: migration `20261022120000` applied; login rules from `config.toml` plus `[remotes.production]` (site URL `https://konzult-crm.vercel.app`). The CLI is linked back to dev. Preview deployment builds and loads (after pinning `"framework": "nextjs"` in `vercel.json`; the project was imported while `main` was empty, so Vercel had picked "Other"). PR into `main` opened; Zander merges. Then: Zander's real prod login, then phone install.
-- **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5).
+- **2026-10-22:** Phase 0 merged into `main` and live; Zander's prod login and phone install were confirmed.
+- **2026-10-22:** Phase 1a on `feature/phase1a-core`: people, organisations, journeys, pipeline board, touch logging, tasks and Today. Migrations `20261022140000` and `20261022140100` are applied to **dev only**. Browser-checked on desktop and phone sizes with the test login and fake sample data. Prod migration and merge need Zander's go-ahead.
+- **Next:** Phase 1b (imports: BNI visitor sheets, accountant outreach campaign, client list), then 1c (automations and insights).
+- **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5). Settings screens for editing sources and exit reasons (tables exist; seeded defaults for now).
 
 ---
 

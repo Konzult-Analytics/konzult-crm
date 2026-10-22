@@ -152,7 +152,8 @@ export default async function PersonPage({
               <span className="badge badge-accent">{isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}</span>
               <span className="font-medium">{stageLabel(j.track ?? "", j.stage ?? "")}</span>
               <span className="text-sm text-ink-soft">
-                since {formatDate(j.opened_at)} · last touch {daysAgo(j.last_touch_at, today)}
+                since {formatDate(j.opened_at)} ·{" "}
+                {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
               </span>
             </div>
             {(j.source || j.referred_by) && (

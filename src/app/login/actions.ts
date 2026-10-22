@@ -31,7 +31,8 @@ export async function login(
     return { error: "Login failed. Check your email and password." };
   }
 
+  // Straight to the two-factor step, so the address bar matches the page.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   revalidatePath("/", "layout");
-  // The proxy sends the session on to two-factor set-up or verification.
-  redirect("/");
+  redirect(aal?.nextLevel === "aal2" ? "/mfa/verify" : "/mfa/enroll");
 }
