@@ -7,5 +7,10 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // Each database test file runs its own in-memory Postgres; running them
+    // side by side exhausted memory on the dev machine and crashed workers.
+    fileParallelism: false,
+    hookTimeout: 60_000,
+    testTimeout: 30_000,
   },
 });

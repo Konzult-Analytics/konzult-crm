@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          import_id: string | null
+          name: string
+          notes: string | null
+          track: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          import_id?: string | null
+          name: string
+          notes?: string | null
+          track: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          import_id?: string | null
+          name?: string
+          notes?: string | null
+          track?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_workspace_id_import_id_fkey"
+            columns: ["workspace_id", "import_id"]
+            isOneToOne: false
+            referencedRelation: "imports"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       exit_reasons: {
         Row: {
           active: boolean
@@ -42,6 +96,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "exit_reasons_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_hash: string
+          file_name: string
+          id: string
+          journeys_created: number
+          kind: string
+          organisations_created: number
+          people_created: number
+          people_updated: number
+          touches_created: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_hash: string
+          file_name: string
+          id?: string
+          journeys_created?: number
+          kind: string
+          organisations_created?: number
+          people_created?: number
+          people_updated?: number
+          touches_created?: number
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_hash?: string
+          file_name?: string
+          id?: string
+          journeys_created?: number
+          kind?: string
+          organisations_created?: number
+          people_created?: number
+          people_updated?: number
+          touches_created?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imports_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -84,6 +191,7 @@ export type Database = {
       }
       interactions: {
         Row: {
+          campaign_id: string | null
           created_at: string
           created_by: string | null
           created_via: string
@@ -103,6 +211,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          campaign_id?: string | null
           created_at?: string
           created_by?: string | null
           created_via?: string
@@ -122,6 +231,7 @@ export type Database = {
           workspace_id?: string
         }
         Update: {
+          campaign_id?: string | null
           created_at?: string
           created_by?: string | null
           created_via?: string
@@ -141,6 +251,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "interactions_campaign_fkey"
+            columns: ["workspace_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "interactions_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -224,6 +341,7 @@ export type Database = {
       }
       journeys: {
         Row: {
+          campaign_id: string | null
           chance_pct: number | null
           closed_at: string | null
           created_at: string
@@ -248,6 +366,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          campaign_id?: string | null
           chance_pct?: number | null
           closed_at?: string | null
           created_at?: string
@@ -272,6 +391,7 @@ export type Database = {
           workspace_id?: string
         }
         Update: {
+          campaign_id?: string | null
           chance_pct?: number | null
           closed_at?: string | null
           created_at?: string
@@ -296,6 +416,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "journeys_campaign_fkey"
+            columns: ["workspace_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "journeys_workspace_id_exit_reason_id_fkey"
             columns: ["workspace_id", "exit_reason_id"]
@@ -407,6 +534,9 @@ export type Database = {
           id: string
           is_bni_member: boolean
           last_name: string | null
+          marketing_consent: string
+          marketing_consent_at: string | null
+          marketing_consent_note: string | null
           notes: string | null
           organisation_id: string | null
           phone: string | null
@@ -425,6 +555,9 @@ export type Database = {
           id?: string
           is_bni_member?: boolean
           last_name?: string | null
+          marketing_consent?: string
+          marketing_consent_at?: string | null
+          marketing_consent_note?: string | null
           notes?: string | null
           organisation_id?: string | null
           phone?: string | null
@@ -443,6 +576,9 @@ export type Database = {
           id?: string
           is_bni_member?: boolean
           last_name?: string | null
+          marketing_consent?: string
+          marketing_consent_at?: string | null
+          marketing_consent_note?: string | null
           notes?: string | null
           organisation_id?: string | null
           phone?: string | null
@@ -634,6 +770,7 @@ export type Database = {
     Views: {
       journey_overview: {
         Row: {
+          campaign: string | null
           chance_pct: number | null
           closed_at: string | null
           display_name: string | null
@@ -676,7 +813,7 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      import_contacts: { Args: { p_import: Json; p_rows: Json }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
