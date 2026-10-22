@@ -60,6 +60,8 @@ Konzult's internal CRM and Zander's daily driver. It tracks every prospect and r
 
 Both projects: org `jixzulbkfppjenmfpbne`, West EU (Ireland). Before any `supabase db push` or `config push`, check `supabase/.temp/project-ref` names the intended project. The CLI pushes to whichever project is linked. Preview `config push` with `echo n | supabase config push` first: the CLI's local defaults can silently weaken remote settings.
 
+**Trap:** in `config.toml`, `[auth] enable_signup = false` is what blocks new sign-ups. `[auth.email] enable_signup` is the **email login provider switch**: setting it false disables email login entirely, and every login fails with `email_provider_disabled`. Keep it `true`. This happened on dev on 2026-10-22 and was fixed the same day.
+
 **Env switching:** `.env.local` locally; Vercel environment variables per environment (Preview → dev, Production → prod).
 
 Both projects live in the same Supabase organisation as the Vertical SaaS / CFO project (Zander's choice, 2026-10-22). The Supabase MCP connector in these sessions only reaches "Konzult-Analytics's Org" (the Lifestyle projects), so this project's migrations go through the Supabase CLI (`supabase link` + `supabase db push`), never MCP or dashboard SQL. Auth settings live in `supabase/config.toml` and go out with `supabase config push`.
