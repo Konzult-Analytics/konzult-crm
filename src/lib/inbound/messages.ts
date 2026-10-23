@@ -113,7 +113,8 @@ function flattenCal(body: unknown): CalEvent {
     uid,
     previous_uid: text(p.rescheduleUid, 200),
     slug: text(p.type, 100),
-    title: text(p.title, 200),
+    // eventTitle is the event type's own name; title is "<name> between <host> and <guest>".
+    title: text(p.eventTitle, 200) ?? text(p.title, 200),
     starts_at: startsAt,
     ends_at: isoTime(p.endTime),
     name: text(attendee.name, 160) ?? text(answer(p.responses, "name"), 160),

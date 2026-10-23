@@ -46,6 +46,7 @@ describe("reading Cal.com events", () => {
       uid: "abc123",
       type: "discovery-call",
       title: "Discovery call between Zander and Bongani",
+      eventTitle: "Discovery call",
       startTime: "2026-11-03T08:00:00Z",
       endTime: "2026-11-03T08:45:00Z",
       attendees: [{ name: "Bongani Booker", email: "Bongani@Example.test", timeZone: "Africa/Johannesburg" }],
@@ -65,7 +66,7 @@ describe("reading Cal.com events", () => {
       uid: "abc123",
       previous_uid: null,
       slug: "discovery-call",
-      title: "Discovery call between Zander and Bongani",
+      title: "Discovery call",
       starts_at: "2026-11-03T08:00:00.000Z",
       ends_at: "2026-11-03T08:45:00.000Z",
       name: "Bongani Booker",
@@ -74,6 +75,11 @@ describe("reading Cal.com events", () => {
       business: "Booker Brands",
       notes: "Cash flow",
     });
+  });
+
+  it("falls back to the booking's own title when the event type's name is missing", () => {
+    const payload = { ...created.payload, eventTitle: undefined };
+    expect(readCalEvent({ ...created, payload }).title).toBe("Discovery call between Zander and Bongani");
   });
 
   it("keeps the original booking for a reschedule, and just the ID for a cancellation", () => {
