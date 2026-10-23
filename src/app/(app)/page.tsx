@@ -4,15 +4,21 @@ import { requireMfaSession } from "@/lib/auth/guard";
 import { addDays, daysAgo, formatDate, saDate } from "@/lib/crm/dates";
 import { personName } from "@/lib/crm/people";
 import { stageLabel } from "@/lib/crm/stages";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import {
   COLD_AFTER_DAYS,
+  DORMANT_AFTER_DAYS,
+  UNANSWERED_TRIES,
   UPCOMING_TASK_DAYS,
   birthdaysSoon,
   isAwaitingFirstContact,
+  isDormantPartner,
   isDueForRevisit,
   isGoingCold,
   splitTasks,
+  unansweredStreak,
 } from "@/lib/crm/today";
+import { closeNeverResponded } from "./pipeline/actions";
 
 const AWAITING_SHOWN = 8;
 
@@ -41,20 +47,39 @@ export default async function TodayPage() {
   const { supabase } = await requireMfaSession();
   const today = saDate();
 
-  const [{ data: tasks }, { data: journeys }, { data: people }] = await Promise.all([
+  const [{ data: tasks }, { data: journeys }, { data: people }, { data: touches }] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, title, due_on, people(id, first_name, last_name)")
       .eq("status", "open")
       .lte("due_on", addDays(today, UPCOMING_TASK_DAYS))
       .order("due_on"),
-    supabase
-      .from("journey_overview")
-      .select(
-        "id, person_id, organisation_id, display_name, track, stage, status, last_touch_at, stage_changed_at, opened_at, parked_until, exit_reason"
-      )
-      .in("status", ["open", "parked"]),
-    supabase.from("people").select("id, first_name, last_name, birthday").not("birthday", "is", null),
+    fetchAll((from, to) =>
+      supabase
+        .from("journey_overview")
+        .select(
+          "id, person_id, organisation_id, display_name, track, stage, status, last_touch_at, stage_changed_at, opened_at, parked_until, exit_reason"
+        )
+        .in("status", ["open", "parked"])
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from("people")
+        .select("id, first_name, last_name, birthday")
+        .not("birthday", "is", null)
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from("interactions")
+        .select("journey_id, direction, outcome, occurred_at")
+        .not("journey_id", "is", null)
+        .order("id")
+        .range(from, to)
+    ),
   ]);
 
   const taskRows = (tasks ?? []).map((t) => ({
@@ -63,9 +88,22 @@ export default async function TodayPage() {
   }));
   const { due, upcoming } = splitTasks(taskRows, today);
   const all = journeys ?? [];
+  const touchesByJourney = new Map<string, NonNullable<typeof touches>>();
+  for (const t of touches ?? []) {
+    touchesByJourney.set(t.journey_id!, [...(touchesByJourney.get(t.journey_id!) ?? []), t]);
+  }
+  const unanswered = all.filter(
+    (j) =>
+      j.status === "open" &&
+      j.stage !== "client" &&
+      j.stage !== "active" &&
+      unansweredStreak(touchesByJourney.get(j.id!) ?? []) >= UNANSWERED_TRIES
+  );
+  const unansweredIds = new Set(unanswered.map((j) => j.id));
   const cold = all
-    .filter((j) => isGoingCold(j, today))
+    .filter((j) => isGoingCold(j, today) && !unansweredIds.has(j.id))
     .sort((a, b) => (a.last_touch_at ?? a.stage_changed_at ?? "").localeCompare(b.last_touch_at ?? b.stage_changed_at ?? ""));
+  const dormant = all.filter((j) => isDormantPartner(j, today));
   const awaiting = all
     .filter(isAwaitingFirstContact)
     .sort((a, b) => (a.opened_at ?? "").localeCompare(b.opened_at ?? ""));
@@ -73,7 +111,15 @@ export default async function TodayPage() {
   const birthdays = birthdaysSoon(people ?? [], today);
 
   const nothing =
-    due.length + upcoming.length + cold.length + awaiting.length + revisit.length + birthdays.length === 0;
+    due.length +
+      upcoming.length +
+      unanswered.length +
+      cold.length +
+      dormant.length +
+      awaiting.length +
+      revisit.length +
+      birthdays.length ===
+    0;
 
   return (
     <div className="space-y-6">
@@ -106,10 +152,62 @@ export default async function TodayPage() {
         </Section>
       )}
 
+      {unanswered.length > 0 && (
+        <Section title={`No reply after ${UNANSWERED_TRIES} tries`} count={unanswered.length}>
+          <ul className="card divide-y divide-line p-0">
+            {unanswered.map((j) => (
+              <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
+                  {j.display_name}
+                </Link>
+                <span className="text-sm text-ink-soft">
+                  {stageText(j)} · last message {daysAgo(j.last_touch_at, today)}
+                </span>
+                <span className="flex gap-2">
+                  {j.person_id && (
+                    <Link href={`/log?person=${j.person_id}`} className="btn btn-ghost btn-sm">
+                      Try another way
+                    </Link>
+                  )}
+                  <form action={closeNeverResponded}>
+                    <input type="hidden" name="journey_id" value={j.id!} />
+                    <button type="submit" className="btn btn-ghost btn-sm">
+                      Close: never responded
+                    </button>
+                  </form>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
       {cold.length > 0 && (
         <Section title={`Going cold (no touch in ${COLD_AFTER_DAYS}+ days)`} count={cold.length}>
           <ul className="card divide-y divide-line p-0">
             {cold.map((j) => (
+              <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+                <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
+                  {j.display_name}
+                </Link>
+                <span className="text-sm text-ink-soft">
+                  {stageText(j)} · touched {daysAgo(j.last_touch_at ?? j.stage_changed_at, today)}
+                </span>
+                {j.person_id && (
+                  <Link href={`/log?person=${j.person_id}`} className="btn btn-ghost btn-sm">
+                    Log a touch
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {dormant.length > 0 && (
+        <Section title={`Partners to reconnect with (${DORMANT_AFTER_DAYS}+ days)`} count={dormant.length}>
+          <ul className="card divide-y divide-line p-0">
+            {dormant.map((j) => (
               <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
                 <Link href={journeyHref(j)} className="min-w-0 basis-full font-medium hover:underline sm:basis-0 sm:flex-1">
                   {j.display_name}

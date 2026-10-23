@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import JourneyControls from "@/components/JourneyControls";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { exitReasonOptions } from "@/lib/crm/lookups";
 import { daysAgo, saDate } from "@/lib/crm/dates";
 import { labelOf, SIZE_BANDS, TURNOVER_BANDS } from "@/lib/crm/labels";
 import { personName } from "@/lib/crm/people";
@@ -19,13 +21,14 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
     .maybeSingle();
   if (!org) notFound();
 
-  const [{ data: people }, { data: journeys }] = await Promise.all([
+  const [{ data: people }, { data: journeys }, reasons] = await Promise.all([
     supabase.from("people").select("id, first_name, last_name, role_title").eq("organisation_id", id).order("first_name"),
     supabase
       .from("journey_overview")
-      .select("id, person_id, display_name, track, stage, status, last_touch_at")
+      .select("id, person_id, display_name, track, stage, status, last_touch_at, exit_reason, exit_side, parked_until")
       .eq("organisation_id", id)
       .order("opened_at"),
+    exitReasonOptions(supabase),
   ]);
 
   const today = saDate();
@@ -69,18 +72,37 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
           <h2 className="section-title">Journeys</h2>
           <ul className="card divide-y divide-line p-0">
             {(journeys ?? []).map((j) => (
-              <li key={j.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-                <span className="badge badge-accent">{isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}</span>
-                <span className="font-medium">{stageLabel(j.track ?? "", j.stage ?? "")}</span>
-                {j.status !== "open" && <span className="badge">{j.status}</span>}
-                {j.person_id && (
-                  <Link href={`/people/${j.person_id}`} className="link">
-                    {j.display_name}
-                  </Link>
+              <li key={j.id} className="space-y-3 px-4 py-3 text-sm">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="badge badge-accent">{isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}</span>
+                  <span className="font-medium">{stageLabel(j.track ?? "", j.stage ?? "")}</span>
+                  {j.person_id ? (
+                    <Link href={`/people/${j.person_id}`} className="link">
+                      {j.display_name}
+                    </Link>
+                  ) : (
+                    <span className="text-ink-soft">the business itself</span>
+                  )}
+                  <span className="text-ink-soft">
+                    · {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
+                  </span>
+                </p>
+                {/* People's journeys are managed on their own page; business-only ones here. */}
+                {!j.person_id && (
+                  <JourneyControls
+                    journey={{
+                      id: j.id!,
+                      track: j.track ?? "",
+                      stage: j.stage ?? "",
+                      status: j.status ?? "open",
+                      exit_reason: j.exit_reason,
+                      exit_side: j.exit_side,
+                      parked_until: j.parked_until,
+                    }}
+                    reasons={reasons}
+                  />
                 )}
-                <span className="text-ink-soft">
-                  · {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
-                </span>
+                {j.person_id && j.status !== "open" && <span className="badge">{j.status}</span>}
               </li>
             ))}
           </ul>

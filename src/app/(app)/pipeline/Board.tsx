@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import ExitForm, { type ExitStatus } from "@/components/ExitForm";
 import { daysAgo, daysBetween, dueLabel, saDate } from "@/lib/crm/dates";
+import { STRONG_FIT } from "@/lib/crm/insights";
 import type { ExitReason } from "@/lib/crm/lookups";
 import { moveStage } from "./actions";
 
@@ -18,6 +19,7 @@ export type BoardCard = {
   lastTouchAt: string | null;
   stageChangedAt: string | null;
   nextTaskOn: string | null;
+  fitScore: number | null;
 };
 
 type Column = { key: string; label: string };
@@ -125,6 +127,13 @@ export default function Board({
                         {card.stageChangedAt && `${daysBetween(saDate(new Date(card.stageChangedAt)), today)}d in stage · `}
                         {card.lastTouchAt ? `touched ${daysAgo(card.lastTouchAt, today)}` : "no touches yet"}
                       </p>
+                      {card.fitScore !== null && (
+                        <p className="text-xs">
+                          <span className={`badge ${card.fitScore >= STRONG_FIT ? "badge-accent" : ""}`}>
+                            Fit {card.fitScore}
+                          </span>
+                        </p>
+                      )}
                       {card.nextTaskOn && (
                         <p className={`text-xs ${card.nextTaskOn < today ? "text-danger" : "text-ink-soft"}`}>
                           Next task {dueLabel(card.nextTaskOn, today)}

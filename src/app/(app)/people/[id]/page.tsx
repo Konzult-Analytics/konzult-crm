@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddTaskForm from "@/components/AddTaskForm";
+import FitCheck from "@/components/FitCheck";
 import JourneyControls from "@/components/JourneyControls";
 import TaskItem from "@/components/TaskItem";
 import Timeline from "@/components/Timeline";
@@ -35,12 +36,18 @@ export default async function PersonPage({
     .maybeSingle();
   if (!person) notFound();
 
-  const [{ data: journeys }, { data: touches }, { data: tasks }, reasons, sources, people] = await Promise.all([
+  const [{ data: journeys }, { data: fits }, { data: touches }, { data: tasks }, reasons, sources, people] = await Promise.all([
     supabase
       .from("journey_overview")
-      .select("id, track, stage, status, source, referred_by, exit_reason, exit_side, parked_until, opened_at, last_touch_at")
+      .select(
+        "id, track, stage, status, source, referred_by, campaign, exit_reason, exit_side, parked_until, opened_at, last_touch_at, fit_score"
+      )
       .eq("person_id", id)
       .order("opened_at"),
+    supabase
+      .from("journeys")
+      .select("id, fit_need, fit_timing, fit_budget, fit_decision, chance_pct, value_estimate")
+      .eq("person_id", id),
     supabase
       .from("interactions")
       .select(
@@ -165,11 +172,15 @@ export default async function PersonPage({
                 {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
               </span>
             </div>
-            {(j.source || j.referred_by) && (
+            {(j.source || j.referred_by || j.campaign) && (
               <p className="text-sm text-ink-soft">
-                {j.source && <>Source: {j.source}</>}
-                {j.source && j.referred_by && " · "}
-                {j.referred_by && <>Introduced by {j.referred_by}</>}
+                {[
+                  j.source && `Source: ${j.source}`,
+                  j.referred_by && `Introduced by ${j.referred_by}`,
+                  j.campaign && `Campaign: ${j.campaign}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             )}
             <JourneyControls
@@ -184,6 +195,21 @@ export default async function PersonPage({
               }}
               reasons={reasons}
             />
+            {j.track === "client" && (
+              <FitCheck
+                journeyId={j.id!}
+                values={{
+                  fit_need: null,
+                  fit_timing: null,
+                  fit_budget: null,
+                  fit_decision: null,
+                  chance_pct: null,
+                  value_estimate: null,
+                  ...(fits ?? []).find((f) => f.id === j.id),
+                  fit_score: j.fit_score,
+                }}
+              />
+            )}
           </div>
         ))}
         {freeTracks.length > 0 && (

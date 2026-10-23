@@ -2,6 +2,8 @@ import { daysBetween, daysUntilBirthday, saDate } from "./dates";
 import { isInProgress } from "./stages";
 
 export const COLD_AFTER_DAYS = 14;
+export const DORMANT_AFTER_DAYS = 90;
+export const UNANSWERED_TRIES = 3;
 export const BIRTHDAY_WINDOW_DAYS = 7;
 export const UPCOMING_TASK_DAYS = 7;
 
@@ -21,6 +23,26 @@ export function isGoingCold(j: JourneyRow, today: string): boolean {
   const last = j.last_touch_at ?? j.stage_changed_at;
   if (!last) return false;
   return daysBetween(saDate(new Date(last)), today) >= COLD_AFTER_DAYS;
+}
+
+/** An active referral partner nobody has been in touch with for DORMANT_AFTER_DAYS. */
+export function isDormantPartner(j: JourneyRow, today: string): boolean {
+  if (j.status !== "open" || j.track !== "partner" || j.stage !== "active") return false;
+  const last = j.last_touch_at ?? j.stage_changed_at;
+  return !!last && daysBetween(saDate(new Date(last)), today) >= DORMANT_AFTER_DAYS;
+}
+
+type Touch = { direction: string | null; outcome: string | null; occurred_at: string };
+
+/** Messages sent in a row, most recent first, with nothing back since. */
+export function unansweredStreak(touches: Touch[]): number {
+  const latestFirst = [...touches].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  let streak = 0;
+  for (const t of latestFirst) {
+    if (t.direction !== "out" || (t.outcome && t.outcome !== "no_reply")) break;
+    streak++;
+  }
+  return streak;
 }
 
 export function isAwaitingFirstContact(j: JourneyRow): boolean {

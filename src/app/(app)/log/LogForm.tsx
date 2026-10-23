@@ -29,9 +29,16 @@ export default function LogForm({
   const [personId, setPersonId] = useState(initialPersonId ?? "");
   const [filter, setFilter] = useState("");
   const [type, setType] = useState<TouchType>("whatsapp");
+  const [direction, setDirection] = useState<"out" | "in">("out");
+  const [outcome, setOutcome] = useState("");
   const [followUp, setFollowUp] = useState("");
+  const [followUpChosen, setFollowUpChosen] = useState(false);
 
   const today = saDate();
+  const chooseFollowUp = (date: string) => {
+    setFollowUpChosen(true);
+    setFollowUp(date);
+  };
   const matches = useMemo(() => {
     const needle = filter.trim().toLowerCase();
     return needle
@@ -40,6 +47,9 @@ export default function LogForm({
   }, [filter, people]);
   const personJourneys = journeys.filter((j) => j.person_id === personId);
   const isMessage = type !== "meeting" && type !== "note";
+  // Spec 7: a message sent with no reply yet gets a follow-up in 4 days, unless you choose otherwise.
+  const awaitingReply = isMessage && direction === "out" && (outcome === "" || outcome === "no_reply");
+  const followUpOn = followUpChosen ? followUp : awaitingReply ? addDays(today, 4) : "";
 
   return (
     <form action={action} className="space-y-5">
@@ -115,10 +125,23 @@ export default function LogForm({
             <legend className="field-label">Direction</legend>
             <div className="chips">
               <label className="chip">
-                <input type="radio" name="direction" value="out" defaultChecked />I reached out
+                <input
+                  type="radio"
+                  name="direction"
+                  value="out"
+                  checked={direction === "out"}
+                  onChange={() => setDirection("out")}
+                />
+                I reached out
               </label>
               <label className="chip">
-                <input type="radio" name="direction" value="in" />
+                <input
+                  type="radio"
+                  name="direction"
+                  value="in"
+                  checked={direction === "in"}
+                  onChange={() => setDirection("in")}
+                />
                 They reached out
               </label>
             </div>
@@ -159,7 +182,7 @@ export default function LogForm({
             <label className="field-label" htmlFor="outcome">
               Outcome
             </label>
-            <select id="outcome" name="outcome" defaultValue="">
+            <select id="outcome" name="outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
               <option value="">No outcome yet</option>
               {OUTCOMES.map((o) => (
                 <option key={o.key} value={o.key}>
@@ -201,9 +224,17 @@ export default function LogForm({
 
       <fieldset className="card space-y-3">
         <legend className="field-label">Follow up?</legend>
+        {!followUpChosen && awaitingReply && (
+          <p className="text-sm text-ink-soft">Pre-set to 4 days because they haven&apos;t replied yet. Pick “No” if you don&apos;t need it.</p>
+        )}
         <div className="chips">
           <label className="chip">
-            <input type="radio" name="follow_up_choice" checked={followUp === ""} onChange={() => setFollowUp("")} />
+            <input
+              type="radio"
+              name="follow_up_choice"
+              checked={followUpOn === ""}
+              onChange={() => chooseFollowUp("")}
+            />
             No
           </label>
           {FOLLOW_UPS.map((f) => {
@@ -213,8 +244,8 @@ export default function LogForm({
                 <input
                   type="radio"
                   name="follow_up_choice"
-                  checked={followUp === date}
-                  onChange={() => setFollowUp(date)}
+                  checked={followUpOn === date}
+                  onChange={() => chooseFollowUp(date)}
                 />
                 {f.label}
               </label>
@@ -230,8 +261,8 @@ export default function LogForm({
             name="follow_up_on"
             type="date"
             min={today}
-            value={followUp}
-            onChange={(e) => setFollowUp(e.target.value)}
+            value={followUpOn}
+            onChange={(e) => chooseFollowUp(e.target.value)}
             className="sm:max-w-60"
           />
         </div>

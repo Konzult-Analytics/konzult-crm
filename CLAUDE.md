@@ -1,8 +1,8 @@
 # Konzult CRM — Project Rules
 
 **Owner:** Zander Kotze
-**Last updated:** 2026-10-22
-**Status:** Phase 0 (set-up) in progress on `feature/phase0-setup`
+**Last updated:** 2026-10-23
+**Status:** Phases 0, 1a and 1b live; Phase 1c (automations and insights) in progress on `feature/phase1c-insights`
 **Inherits from:** `~/.claude/CLAUDE.md` (global rules)
 
 ---
@@ -86,6 +86,10 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - Database types are generated: run `pnpm db:types` after a migration reaches dev.
 - **Imports** (`/import`, `src/lib/import/`): the server parses an uploaded file (SheetJS) into `ParsedFile`, matches rows against existing people and businesses, and shows a preview. On commit, the server re-validates the preview with zod, re-matches against fresh data, builds a plan (`plan.ts`) and calls `public.import_contacts` once. That function runs as the caller (RLS and two-factor apply) in a single transaction: nothing is saved unless every row is. Matching uses email, then phone, then name + business, then a unique name. Existing contacts only gain blanks; they're never overwritten. Repeats in a file are merged with `same_as`. Identical touches aren't inserted twice, so re-importing a file adds nothing.
 - **Marketing consent** (POPIA s69) is per person: `people.marketing_consent` is `unknown`, `granted` or `refused`, with a date and note. Imports never set it. Future bulk sends must only go to `granted`.
+- **Automations** live in the database (migration `20261023090000`): when a client journey reaches Client, `private.client_care_tasks` adds a monthly check-in (30 days), a monthly payment check (7 days) and a testimonial + referral ask (60 days), all `origin = 'auto'`. Ticking off a `repeat_rule = 'monthly'` task makes `private.repeat_task` schedule the next one, until the journey closes. The 4-day follow-up pre-set, "No reply after 3 tries" and "Partners to reconnect with (90+ days)" are app-side (`LogForm.tsx`, `src/lib/crm/today.ts`).
+- **Fit check:** four answers on `journeys` (`fit_need`, `fit_timing`, `fit_budget`, `fit_decision`: yes / maybe / no) give the generated `fit_score` (0–100; 60+ is a strong fit, `STRONG_FIT`). Insights compares fit with outcome.
+- **Insights** (`/insights`) are computed in TypeScript from journeys, stage history and touches (`src/lib/crm/insights.ts`, unit-tested), per track and period.
+- **The API returns at most 1,000 rows per request** (`[api] max_rows`), silently. Any read that isn't naturally small (lists, matching, Insights) goes through `fetchAll` (`src/lib/supabase/fetch-all.ts`) with `.order(...).order("id").range(from, to)`.
 - `vitest` runs test files one at a time (`fileParallelism: false`). Parallel in-memory Postgres instances exhausted memory on the dev machine.
 - Server actions live next to their pages (`app/**/actions.ts`). All writes and AI calls are server-side.
 
@@ -123,7 +127,9 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 
 ### Dev sample data
 
-`supabase/seed.sql` holds fake people (`@example.test`). Load it with `supabase db push --include-seed` while linked to dev. It is idempotent. Three things stop it reaching production: `[remotes.production.db.seed] enabled = false`, a guard that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guard.
+`supabase/seed.sql` and `supabase/seed-phase1c.sql` hold fake people (`@example.test`). Load them with `supabase db push --include-seed` while linked to dev. They are idempotent. Three things stop them reaching production: `[remotes.production.db.seed] enabled = false`, a guard in each file that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guards.
+
+**Trap:** the CLI runs each seed file once. Editing a file that already ran only updates its recorded hash ("Updating seed hash"); the new rows never arrive. Put new samples in a new file with the same guard, and list it in `[db.seed] sql_paths` in `config.toml`.
 
 ### Browser checks as the dev test login
 
@@ -137,8 +143,9 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **2026-10-22:** Phase 0 code on `feature/phase0-setup`: login + compulsory two-factor, workspace migration, phone-install manifest and icons. Tests, typecheck, lint and build pass. Dev database set up (migration `20261022120000` applied; sign-ups off, 12-character minimum password, TOTP on). App runs locally against dev. Zander's dev login, two-factor enrolment and the set-up check (workspace read through RLS) all passed end to end. Pushed to GitHub `Konzult-Analytics/konzult-crm` (HTTPS via Git Credential Manager): `main` holds only an empty initial commit; Phase 0 sits on `feature/phase0-setup` and reaches `main` via pull request after the Vercel preview is checked. Vercel env vars set (Production → prod, Preview → dev). Prod database set up on 2026-10-22 with Zander's go-ahead: migration `20261022120000` applied; login rules from `config.toml` plus `[remotes.production]` (site URL `https://konzult-crm.vercel.app`). The CLI is linked back to dev. Preview deployment builds and loads (after pinning `"framework": "nextjs"` in `vercel.json`; the project was imported while `main` was empty, so Vercel had picked "Other"). PR into `main` opened; Zander merges. Then: Zander's real prod login, then phone install.
 - **2026-10-22:** Phase 0 merged into `main` and live; Zander's prod login and phone install were confirmed.
 - **2026-10-22:** Phase 1a (people, organisations, journeys, pipeline, touch logging, tasks, Today) merged as PR #2 and live; migrations `20261022140000` and `20261022140100` are on dev and prod.
-- **2026-10-22:** Phase 1b on `feature/phase1b-imports`: imports (BNI visitor sheets, outreach campaigns, contact lists), campaigns, marketing consent. Migration `20261022170000` is on **dev only**. Browser-tested on dev with fake files laid out like the real ones (visitors, re-import, outreach, contact list, consent, phone size). Prod migration and merge need Zander's go-ahead. The real files are imported by Zander on production after the merge.
-- **Next:** Phase 1c (automations and insights). Known gaps: business-only journeys can only be moved from the pipeline board (the organisation page has no stage controls), and touches can only be logged for people.
+- **2026-10-22:** Phase 1b (imports of BNI visitor sheets, outreach campaigns and contact lists; campaigns; marketing consent) merged as PR #3 and live; migration `20261022170000` is on dev and prod.
+- **2026-10-23:** Phase 1c on `feature/phase1c-insights`: automations (follow-up pre-set, no reply after 3 tries, client-care tasks, monthly repeats, dormant partners), fit check with deal value and chance, the Insights page, stage controls for business-only journeys on the organisation page, and paging past the 1,000-row API limit. Migration `20261023090000` is on **dev only**; `seed-phase1c.sql` loaded on dev. Prod migration and merge need Zander's go-ahead.
+- **Known gap:** touches can only be logged for people, not for a business on its own.
 - **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5). Settings screens for editing sources and exit reasons (tables exist; seeded defaults for now).
 
 ---
@@ -165,3 +172,4 @@ None granted yet. Ask Zander before acting.
 ## 13. Changelog
 
 - **2026-10-22:** initial document
+- **2026-10-23:** Phase 1c patterns (automations, fit check, Insights, `fetchAll`), seed-file trap, status brought up to date
