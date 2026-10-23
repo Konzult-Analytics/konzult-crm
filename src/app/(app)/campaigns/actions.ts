@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { BOOKING_TYPE_ROWS, bookingPageSchema, bookingTypeSchema, type BookingType } from "@/lib/crm/booking-links";
 import { saDate } from "@/lib/crm/dates";
 import { findOrCreateOrganisation } from "@/lib/crm/organisations";
 import {
@@ -42,6 +43,37 @@ export async function saveCampaign(campaignId: string | null, _prev: FormState, 
   if (error) {
     console.error("save campaign failed", error);
     return { error: "Couldn't save the campaign. Try again." };
+  }
+  revalidatePath("/", "layout");
+  return null;
+}
+
+/** The Cal.com booking page and the event types the CRM offers (Book buttons, QR codes). */
+export async function saveBookingSettings(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { supabase } = await requireMfaSession();
+  const rawPage = String(formData.get("booking_page_url") ?? "").trim();
+  const page = rawPage ? bookingPageSchema.safeParse(rawPage) : null;
+  if (page && !page.success) return { error: "The booking page is your Cal.com address, starting https://" };
+
+  const types: BookingType[] = [];
+  for (let i = 0; i < BOOKING_TYPE_ROWS; i++) {
+    const label = String(formData.get(`label_${i}`) ?? "").trim();
+    const slug = String(formData.get(`slug_${i}`) ?? "").trim();
+    if (!label && !slug) continue;
+    const parsed = bookingTypeSchema.safeParse({ label, slug });
+    if (!parsed.success) return { error: `Row ${i + 1}: give a name and the event's link name (e.g. discovery-call).` };
+    if (types.some((t) => t.slug === parsed.data.slug)) return { error: `"${parsed.data.slug}" is listed twice.` };
+    types.push(parsed.data);
+  }
+
+  const values = { booking_page_url: page?.data ?? null, booking_types: page ? types : [] };
+  const { data: existing } = await supabase.from("workspace_settings").select("workspace_id").maybeSingle();
+  const { error } = existing
+    ? await supabase.from("workspace_settings").update(values).eq("workspace_id", existing.workspace_id)
+    : await supabase.from("workspace_settings").insert(values);
+  if (error) {
+    console.error("save booking settings failed", error);
+    return { error: "Couldn't save the booking links. Try again." };
   }
   revalidatePath("/", "layout");
   return null;

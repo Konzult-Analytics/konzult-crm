@@ -13,10 +13,14 @@ import TaskItem from "@/components/TaskItem";
 import Timeline from "@/components/Timeline";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { loadReferrals } from "@/lib/crm/bni";
-import { daysAgo, formatDate, saDate } from "@/lib/crm/dates";
+import { BOOKING_SOURCES, bookingChangeUrls, bookingUrl } from "@/lib/crm/booking-links";
+import { bookingSettings } from "@/lib/crm/booking-settings";
+import { daysAgo, formatDate, formatDateTime, saDate } from "@/lib/crm/dates";
+import { labelOf } from "@/lib/crm/labels";
 import { exitReasonOptions, personOptions, sourceOptions } from "@/lib/crm/lookups";
 import { personName, whatsappNumber } from "@/lib/crm/people";
 import { TRACK_LABEL, TRACKS, isTrack, stageLabel } from "@/lib/crm/stages";
+import { markNoShow } from "../../calendar/actions";
 import ConsentControl from "./ConsentControl";
 import StartJourneyForm from "./StartJourneyForm";
 
@@ -77,30 +81,46 @@ export default async function PersonPage({
       personOptions(supabase),
     ]);
 
-  const [{ data: templates }, { data: library }, { data: documents }, { data: sends }, { data: asked }, referrals, { data: campaigns }] =
-    await Promise.all([
-      supabase.from("templates").select("id, name, purpose, subject, body").eq("active", true).order("sort_order"),
-      supabase.from("documents").select("id, title, kind, is_library").eq("is_library", true).eq("archived", false).order("title"),
-      supabase
-        .from("documents")
-        .select("id, title, kind, is_library, file_name, size_bytes, url, version, created_at")
-        .eq("person_id", id)
-        .eq("archived", false)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("asset_sends")
-        .select("id, channel, sent_at, open_count, first_opened_at, last_opened_at, revoked_at, expires_at, share_token, documents(title)")
-        .eq("person_id", id)
-        .order("sent_at", { ascending: false }),
-      supabase
-        .from("interactions")
-        .select("id, templates!inner(purpose), interaction_people!inner(person_id)")
-        .eq("interaction_people.person_id", id)
-        .eq("templates.purpose", "consent_request")
-        .limit(1),
-      loadReferrals(supabase, id),
-      supabase.from("campaigns").select("id, name").eq("active", true).order("name"),
-    ]);
+  const [
+    { data: templates },
+    { data: library },
+    { data: documents },
+    { data: sends },
+    { data: asked },
+    referrals,
+    { data: campaigns },
+    { data: bookings },
+    booking,
+  ] = await Promise.all([
+    supabase.from("templates").select("id, name, purpose, subject, body").eq("active", true).order("sort_order"),
+    supabase.from("documents").select("id, title, kind, is_library").eq("is_library", true).eq("archived", false).order("title"),
+    supabase
+      .from("documents")
+      .select("id, title, kind, is_library, file_name, size_bytes, url, version, created_at")
+      .eq("person_id", id)
+      .eq("archived", false)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("asset_sends")
+      .select("id, channel, sent_at, open_count, first_opened_at, last_opened_at, revoked_at, expires_at, share_token, documents(title)")
+      .eq("person_id", id)
+      .order("sent_at", { ascending: false }),
+    supabase
+      .from("interactions")
+      .select("id, templates!inner(purpose), interaction_people!inner(person_id)")
+      .eq("interaction_people.person_id", id)
+      .eq("templates.purpose", "consent_request")
+      .limit(1),
+    loadReferrals(supabase, id),
+    supabase.from("campaigns").select("id, name").eq("active", true).order("name"),
+    supabase
+      .from("bookings")
+      .select("id, external_uid, title, starts_at, ends_at, status, source, meeting_url, outcome")
+      .eq("person_id", id)
+      .order("starts_at", { ascending: false })
+      .limit(20),
+    bookingSettings(supabase),
+  ]);
 
   const name = personName(person);
   const wa = whatsappNumber(person.phone);
@@ -111,6 +131,11 @@ export default async function PersonPage({
   const freeTracks = TRACKS.filter(
     (t) => !(journeys ?? []).some((j) => j.track === t && j.status !== "lost")
   );
+  const prefill = { name, email: person.email, phone: person.phone, business: person.organisations?.name };
+  const bookLinks = booking.page
+    ? booking.types.map((t) => ({ ...t, url: bookingUrl(booking.page!, t.slug, { source: "crm", prefill }) }))
+    : [];
+  const now = new Date();
 
   return (
     <div className="space-y-6">
@@ -286,6 +311,82 @@ export default async function PersonPage({
         )}
       </section>
 
+      {(bookLinks.length > 0 || (bookings ?? []).length > 0) && (
+        <section className="space-y-3">
+          <h2 className="section-title">Meetings</h2>
+          <div className="card space-y-3 text-sm">
+            {bookLinks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {bookLinks.map((l) => (
+                    <a key={l.slug} href={l.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                      Book: {l.label}
+                    </a>
+                  ))}
+                </div>
+                <p className="text-xs text-ink-soft">
+                  Opens your Cal.com page with {person.first_name}&apos;s details filled in. It only offers times you&apos;re
+                  free, and the booking lands here and in Google Calendar. To let them pick, send the booking link from
+                  “Send a message” below.
+                </p>
+              </div>
+            )}
+            {(bookings ?? []).length > 0 && (
+              <ul className="divide-y divide-line border-t border-line">
+                {(bookings ?? []).map((b) => {
+                  const upcoming = b.status === "booked" && Date.parse(b.ends_at ?? b.starts_at) > now.getTime();
+                  const change = upcoming ? bookingChangeUrls(booking.page, b.external_uid) : null;
+                  return (
+                    <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+                      <span className="min-w-[12rem] flex-1">
+                        <span className={b.status === "cancelled" ? "text-ink-soft line-through" : "font-medium"}>{b.title}</span>
+                        <span className="text-ink-soft"> · {formatDateTime(b.starts_at)}</span>
+                        {b.source !== "link" && <span className="badge ml-2">{labelOf(BOOKING_SOURCES, b.source)}</span>}
+                      </span>
+                      {b.status === "cancelled" ? (
+                        <span className="text-ink-soft">Cancelled</span>
+                      ) : upcoming ? (
+                        <span className="flex flex-wrap gap-2">
+                          {b.meeting_url && (
+                            <a href={b.meeting_url} target="_blank" rel="noreferrer" className="btn btn-accent btn-sm">
+                              Join
+                            </a>
+                          )}
+                          {change && (
+                            <>
+                              <a href={change.reschedule} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                                Reschedule
+                              </a>
+                              <a href={change.cancel} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                                Cancel
+                              </a>
+                            </>
+                          )}
+                        </span>
+                      ) : b.outcome ? (
+                        <span className="text-ink-soft">{b.outcome === "held" ? "Happened" : "Didn't show"}</span>
+                      ) : (
+                        <span className="flex gap-2">
+                          <Link href={`/log?person=${person.id}&booking=${b.id}`} className="btn btn-accent btn-sm">
+                            It happened: log it
+                          </Link>
+                          <form action={markNoShow}>
+                            <input type="hidden" name="booking_id" value={b.id} />
+                            <button type="submit" className="btn btn-ghost btn-sm">
+                              Didn&apos;t show
+                            </button>
+                          </form>
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
+
       <SendPanel
         personId={person.id}
         firstName={person.first_name}
@@ -299,6 +400,7 @@ export default async function PersonPage({
         templates={templates ?? []}
         documents={[...(library ?? []), ...(documents ?? [])]}
         campaigns={campaigns ?? []}
+        bookingLinks={bookLinks.map(({ label, url }) => ({ label, url }))}
       />
 
       {(sends ?? []).length > 0 && (

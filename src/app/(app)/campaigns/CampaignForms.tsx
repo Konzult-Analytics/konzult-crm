@@ -4,7 +4,8 @@ import { useActionState } from "react";
 import SubmitButton from "@/components/SubmitButton";
 import { saDate } from "@/lib/crm/dates";
 import { CAMPAIGN_CHANNELS } from "@/lib/crm/labels";
-import { saveCampaign, saveTarget } from "./actions";
+import { BOOKING_TYPE_ROWS, type BookingType } from "@/lib/crm/booking-links";
+import { saveBookingSettings, saveCampaign, saveTarget } from "./actions";
 
 export type CampaignValues = {
   id: string;
@@ -82,6 +83,45 @@ export function CampaignForm({ campaign }: { campaign: CampaignValues | null }) 
       <SubmitButton pending="Saving…" className="btn btn-ghost">
         {campaign ? "Save campaign" : "Add campaign"}
       </SubmitButton>
+    </form>
+  );
+}
+
+export function BookingSettingsForm({ page, types }: { page: string | null; types: BookingType[] }) {
+  const [state, action] = useActionState(saveBookingSettings, null);
+  const rows = Array.from({ length: BOOKING_TYPE_ROWS }, (_, i) => types[i] ?? { label: "", slug: "" });
+  return (
+    <form action={action} className="space-y-3 text-sm">
+      <div>
+        <label className="field-label" htmlFor="booking_page_url">
+          Your Cal.com page
+        </label>
+        <input
+          id="booking_page_url"
+          name="booking_page_url"
+          type="url"
+          maxLength={200}
+          placeholder="https://cal.com/your-name"
+          defaultValue={page ?? ""}
+        />
+      </div>
+      <fieldset className="space-y-2">
+        <legend className="field-label">Event types (name, and the last part of its Cal.com link)</legend>
+        {rows.map((r, i) => (
+          <div key={i} className="grid grid-cols-2 gap-2">
+            <input name={`label_${i}`} aria-label={`Event ${i + 1} name`} maxLength={60} placeholder="Discovery call" defaultValue={r.label} />
+            <input name={`slug_${i}`} aria-label={`Event ${i + 1} link name`} maxLength={100} placeholder="discovery-call" defaultValue={r.slug} />
+          </div>
+        ))}
+      </fieldset>
+      <SubmitButton pending="Saving…" className="btn btn-ghost">
+        Save
+      </SubmitButton>
+      {state?.error && (
+        <p className="text-danger" role="alert">
+          {state.error}
+        </p>
+      )}
     </form>
   );
 }

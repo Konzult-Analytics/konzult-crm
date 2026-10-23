@@ -8,12 +8,24 @@ export const PURPOSES = [
   { key: "consent_request", label: "Consent request (once, to someone not yet asked)" },
 ] as const;
 
-export const MERGE_FIELDS = ["{first_name}", "{full_name}", "{business}", "{links}"] as const;
+export const MERGE_FIELDS = ["{first_name}", "{full_name}", "{business}", "{links}", "{booking_link}"] as const;
 
 export const OPT_OUT = "If you'd rather not hear from me, reply STOP and I won't send more.";
 
 export type MergeContext = { firstName: string; fullName: string; business: string | null };
 export type MessageLink = { title: string; url: string };
+
+/**
+ * Swaps the booking link in a message: replaces the old one or {booking_link},
+ * or adds it at the end; with no new link, the old one (or placeholder) goes.
+ */
+export function swapBookingLink(text: string, oldUrl: string | null, newUrl: string | null): string {
+  let out: string;
+  if (oldUrl && text.includes(oldUrl)) out = text.replaceAll(oldUrl, newUrl ?? "");
+  else if (text.includes("{booking_link}")) out = text.replaceAll("{booking_link}", newUrl ?? "");
+  else out = newUrl ? `${text.trimEnd()}\n\n${newUrl}` : text;
+  return out.replace(/\n{3,}/g, "\n\n");
+}
 
 /** Fills the name and business fields. {links} is left for linkMessage, which runs at send time. */
 export function mergeFields(text: string, ctx: MergeContext): string {

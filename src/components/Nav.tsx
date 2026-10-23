@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 // On phones the tabs wrap onto two rows so every one stays visible; `short` keeps them compact.
 const LINKS: { href: string; label: string; short?: string }[] = [
   { href: "/", label: "Today" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/pipeline", label: "Pipeline" },
   { href: "/people", label: "People" },
   { href: "/organisations", label: "Organisations", short: "Orgs" },

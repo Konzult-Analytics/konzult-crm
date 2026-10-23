@@ -143,9 +143,13 @@ export type Database = {
           external_uid: string
           id: string
           journey_id: string | null
+          meeting_url: string | null
           notes: string | null
+          outcome: string | null
+          outcome_at: string | null
           person_id: string | null
           prep_task_id: string | null
+          source: string
           starts_at: string
           status: string
           title: string | null
@@ -166,9 +170,13 @@ export type Database = {
           external_uid: string
           id?: string
           journey_id?: string | null
+          meeting_url?: string | null
           notes?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
           person_id?: string | null
           prep_task_id?: string | null
+          source?: string
           starts_at: string
           status?: string
           title?: string | null
@@ -189,9 +197,13 @@ export type Database = {
           external_uid?: string
           id?: string
           journey_id?: string | null
+          meeting_url?: string | null
           notes?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
           person_id?: string | null
           prep_task_id?: string | null
+          source?: string
           starts_at?: string
           status?: string
           title?: string | null
@@ -1516,6 +1528,8 @@ export type Database = {
       }
       workspace_settings: {
         Row: {
+          booking_page_url: string | null
+          booking_types: Json
           created_at: string
           created_by: string | null
           one_to_one_target: number
@@ -1525,6 +1539,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          booking_page_url?: string | null
+          booking_types?: Json
           created_at?: string
           created_by?: string | null
           one_to_one_target?: number
@@ -1534,6 +1550,8 @@ export type Database = {
           workspace_id?: string
         }
         Update: {
+          booking_page_url?: string | null
+          booking_types?: Json
           created_at?: string
           created_by?: string | null
           one_to_one_target?: number

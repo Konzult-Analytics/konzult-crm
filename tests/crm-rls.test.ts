@@ -63,7 +63,7 @@ describe("CRM tables", () => {
               (select count(*)::int from public.exit_reasons) as reasons,
               (select count(*)::int from public.exit_reasons where side = 'ours') as ours`
     );
-    expect(counts.rows[0]).toEqual({ sources: 9, reasons: 12, ours: 6 });
+    expect(counts.rows[0]).toEqual({ sources: 10, reasons: 12, ours: 6 });
   });
 
   it("fills workspace and audit columns without the app passing them", async () => {

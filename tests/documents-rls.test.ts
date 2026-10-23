@@ -48,7 +48,7 @@ describe("documents, templates and tracked links", { timeout: 30_000 }, () => {
     libraryId = doc.rows[0].id;
   });
 
-  it("gives a new workspace the five default templates", async () => {
+  it("gives a new workspace the default templates", async () => {
     const t = await db.as(OWNER, "aal2", `select name, purpose from public.templates order by sort_order`);
     expect(t.rows).toEqual([
       { name: "Thank you after a one-to-one", purpose: "personal" },
@@ -56,6 +56,7 @@ describe("documents, templates and tracked links", { timeout: 30_000 }, () => {
       { name: "Proposal cover note", purpose: "personal" },
       { name: "Client check-in", purpose: "personal" },
       { name: "Consent request", purpose: "consent_request" },
+      { name: "Book a time", purpose: "personal" },
     ]);
   });
 

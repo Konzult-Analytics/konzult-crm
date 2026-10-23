@@ -18,6 +18,8 @@ const calEventSchema = z.object({
   phone: optional(40),
   business: optional(160),
   notes: optional(2000),
+  source: z.enum(["link", "qr", "crm"]).optional(),
+  meeting_url: z.url({ protocol: /^https$/ }).max(500).nullable().optional(),
 });
 
 const websiteLeadSchema = z.object({
@@ -44,6 +46,8 @@ export type CalEvent = {
   phone?: string | null;
   business?: string | null;
   notes?: string | null;
+  source?: "link" | "qr" | "crm";
+  meeting_url?: string | null;
 };
 
 export type WebsiteLead = {
@@ -70,6 +74,17 @@ function text(v: unknown, max: number): string | null {
 function email(v: unknown): string | null {
   const s = text(v, 254);
   return s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s.toLowerCase() : null;
+}
+
+/** An https address, or null: anything else could run script when used as a link. */
+export function httpsUrl(v: unknown): string | null {
+  const s = text(v, 500);
+  if (!s || /[\s<>"]/.test(s)) return null;
+  try {
+    return new URL(s).protocol === "https:" ? s : null;
+  } catch {
+    return null;
+  }
 }
 
 function isoTime(v: unknown): string | null {
@@ -108,6 +123,10 @@ function flattenCal(body: unknown): CalEvent {
   const startsAt = isoTime(p.startTime);
   if (!startsAt) return { event: "ignored" };
   const attendee = Array.isArray(p.attendees) && isObject(p.attendees[0]) ? p.attendees[0] : {};
+  // Booking links from the CRM carry ?metadata[source]=qr or crm, which Cal.com passes back here.
+  const metadata = isObject(p.metadata) ? p.metadata : {};
+  const source = metadata.source === "qr" || metadata.source === "crm" ? metadata.source : "link";
+  const video = isObject(p.videoCallData) ? p.videoCallData.url : undefined;
   return {
     event,
     uid,
@@ -125,6 +144,8 @@ function flattenCal(body: unknown): CalEvent {
       text(attendee.phoneNumber, 40),
     business: text(answer(p.responses, "business"), 160),
     notes: text(answer(p.responses, "notes"), 2000) ?? text(p.additionalNotes, 2000),
+    source,
+    meeting_url: httpsUrl(metadata.videoCallUrl) ?? httpsUrl(video) ?? httpsUrl(p.location) ?? httpsUrl(metadata.hangoutLink),
   };
 }
 

@@ -10,6 +10,9 @@ import { logTouch } from "./actions";
 
 export type OpenJourney = { id: string; person_id: string; track: string; stage: string; campaign_id: string | null };
 
+/** A Cal.com booking being logged as held. */
+export type BookedMeeting = { id: string; title: string; journeyId: string | null; startsLocal: string; oneToOne: boolean };
+
 const FOLLOW_UPS = [
   { days: 2, label: "In 2 days" },
   { days: 4, label: "In 4 days" },
@@ -21,16 +24,18 @@ export default function LogForm({
   journeys,
   campaigns,
   initialPersonId,
+  meeting = null,
 }: {
   people: PersonOption[];
   journeys: OpenJourney[];
   campaigns: { id: string; name: string }[];
   initialPersonId: string | null;
+  meeting?: BookedMeeting | null;
 }) {
   const [state, action] = useActionState(logTouch, null);
   const [personId, setPersonId] = useState(initialPersonId ?? "");
   const [filter, setFilter] = useState("");
-  const [type, setType] = useState<TouchType>("whatsapp");
+  const [type, setType] = useState<TouchType>(meeting ? "meeting" : "whatsapp");
   const [direction, setDirection] = useState<"out" | "in">("out");
   const [outcome, setOutcome] = useState("");
   const [followUp, setFollowUp] = useState("");
@@ -48,6 +53,7 @@ export default function LogForm({
       : people;
   }, [filter, people]);
   const personJourneys = journeys.filter((j) => j.person_id === personId);
+  const firstJourney = personJourneys.find((j) => j.id === meeting?.journeyId) ?? personJourneys[0];
   const isMessage = type !== "meeting" && type !== "note";
   // Spec 7: a message sent with no reply yet gets a follow-up in 4 days, unless you choose otherwise.
   const awaitingReply = isMessage && direction === "out" && (outcome === "" || outcome === "no_reply");
@@ -55,6 +61,7 @@ export default function LogForm({
 
   return (
     <form action={action} className="space-y-5">
+      {meeting && <input type="hidden" name="booking_id" value={meeting.id} />}
       <div className="card space-y-3">
         <label className="field-label" htmlFor="person-filter">
           Who was it with?
@@ -91,7 +98,7 @@ export default function LogForm({
             <label className="field-label" htmlFor="campaign_id">
               Campaign (optional)
             </label>
-            <select id="campaign_id" name="campaign_id" defaultValue={personJourneys[0]?.campaign_id ?? ""} key={`c-${personId}`}>
+            <select id="campaign_id" name="campaign_id" defaultValue={firstJourney?.campaign_id ?? ""} key={`c-${personId}`}>
               <option value="">Not part of a campaign</option>
               {campaigns.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -106,7 +113,7 @@ export default function LogForm({
             <label className="field-label" htmlFor="journey_id">
               Journey
             </label>
-            <select id="journey_id" name="journey_id" defaultValue={personJourneys[0].id} key={personId}>
+            <select id="journey_id" name="journey_id" defaultValue={firstJourney.id} key={personId}>
               {personJourneys.map((j) => (
                 <option key={j.id} value={j.id}>
                   {isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}: {stageLabel(j.track, j.stage)}
@@ -171,7 +178,7 @@ export default function LogForm({
               <label className="field-label" htmlFor="meeting_purpose">
                 Purpose
               </label>
-              <select id="meeting_purpose" name="meeting_purpose" defaultValue="sales">
+              <select id="meeting_purpose" name="meeting_purpose" defaultValue={meeting?.oneToOne ? "referral" : "sales"}>
                 {MEETING_PURPOSES.map((m) => (
                   <option key={m.key} value={m.key}>
                     {m.label}
@@ -183,7 +190,11 @@ export default function LogForm({
               <label className="field-label" htmlFor="meeting_setting">
                 Where
               </label>
-              <select id="meeting_setting" name="meeting_setting" defaultValue="bni_one_to_one">
+              <select
+                id="meeting_setting"
+                name="meeting_setting"
+                defaultValue={meeting && !meeting.oneToOne ? "online" : "bni_one_to_one"}
+              >
                 {MEETING_SETTINGS.map((m) => (
                   <option key={m.key} value={m.key}>
                     {m.label}
@@ -233,7 +244,7 @@ export default function LogForm({
             name="occurred_at"
             type="datetime-local"
             required
-            defaultValue={saDateTimeLocal()}
+            defaultValue={meeting?.startsLocal ?? saDateTimeLocal()}
             className="sm:max-w-60"
           />
         </div>

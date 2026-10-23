@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  bookingStats,
   bySource,
   campaignNumbers,
   byReferrer,
@@ -229,5 +230,37 @@ describe("Today additions", () => {
     expect(isDormantPartner({ ...partner, last_touch_at: "2026-07-26T08:00:00Z" }, "2026-10-23")).toBe(false); // 89 days
     expect(isDormantPartner({ ...partner, last_touch_at: "2026-07-20T08:00:00Z" }, "2026-10-23")).toBe(true);
     expect(isDormantPartner({ ...partner, stage: "one_to_one", last_touch_at: "2026-01-01T08:00:00Z" }, "2026-10-23")).toBe(false);
+  });
+});
+
+describe("booked meetings", () => {
+  it("counts what happened to bookings, and which link brought them", () => {
+    const now = new Date("2026-10-23T12:00:00Z");
+    const b = (status: string, outcome: string | null, source: string, starts_at: string) => ({ status, outcome, source, starts_at });
+    const stats = bookingStats(
+      [
+        b("booked", "held", "qr", "2026-10-20T08:00:00Z"),
+        b("booked", "held", "link", "2026-10-21T08:00:00Z"),
+        b("booked", "no_show", "link", "2026-10-22T08:00:00Z"),
+        b("booked", null, "crm", "2026-10-23T08:00:00Z"),
+        b("booked", null, "qr", "2026-10-26T08:00:00Z"),
+        b("cancelled", null, "link", "2026-10-27T08:00:00Z"),
+      ],
+      now
+    );
+    expect(stats).toEqual({
+      booked: 6,
+      cancelled: 1,
+      held: 2,
+      noShow: 1,
+      unrecorded: 1,
+      upcoming: 1,
+      showRate: 2 / 3,
+      bySource: [
+        { source: "link", booked: 3, held: 1 },
+        { source: "qr", booked: 2, held: 1 },
+        { source: "crm", booked: 1, held: 0 },
+      ],
+    });
   });
 });

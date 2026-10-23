@@ -2,7 +2,7 @@
 
 **Owner:** Zander Kotze
 **Last updated:** 2026-10-23
-**Status:** Phases 1, 2 and 3 live; Cal.com connected on production; the website form not yet connected
+**Status:** Phases 1, 2 and 3 live; Cal.com connected on production; Phase 3c (calendar, booking links, QR codes) in progress on `feature/phase3c-calendar`; the website form not yet connected
 **Inherits from:** `~/.claude/CLAUDE.md` (global rules)
 
 ---
@@ -64,7 +64,7 @@ Both projects: org `jixzulbkfppjenmfpbne`, West EU (Ireland). Before any `supaba
 
 **Trap:** in `config.toml`, `[auth] enable_signup = false` is what blocks new sign-ups. `[auth.email] enable_signup` is the **email login provider switch**: setting it false disables email login entirely, and every login fails with `email_provider_disabled`. Keep it `true`. This happened on dev on 2026-10-22 and was fixed the same day.
 
-**Env switching:** `.env.local` locally; Vercel environment variables per environment (Preview → dev, Production → prod).
+**Env switching:** `.env.local` locally; Vercel environment variables per environment (Preview → dev, Production → prod). `GOOGLE_CALENDAR_ICS_URL` (Google Calendar's secret iCal address, Sensitive) is set for Production only, by Zander; without it, local and preview show a made-up sample calendar.
 
 Both projects live in the same Supabase organisation as the Vertical SaaS / CFO project (Zander's choice, 2026-10-22). The Supabase MCP connector in these sessions only reaches "Konzult-Analytics's Org" (the Lifestyle projects), so this project's migrations go through the Supabase CLI (`supabase link` + `supabase db push`), never MCP or dashboard SQL. Auth settings live in `supabase/config.toml` and go out with `supabase config push`.
 
@@ -99,7 +99,10 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **Bookings:** a person is matched by email, then by the last nine digits of their cell when one side has no email (different emails on one number are different people), or added (source Booking link). Slug `…one-to-one…` → partner journey to One-to-one; `…kickoff…` → note only; anything else → client journey to Meeting (a parked journey reopens). Each booking adds a timeline note and a prep task due the working day before; reschedules move both, cancellations cancel both. Notes and tasks use the event type's own name (Cal.com's `eventTitle`), not the booking title "… between Zander Kotze and …". Today lists meetings for the next 7 days.
 - **Website form fields** map by name (`readWebsiteLead`): name, email, phone (also "Contact Number"), business (company), message, and marketing_consent. Any other answered question is added to the enquiry's message as "Question: answer" (up to 10), so form changes lose nothing. Framer's own hidden spam fields (subject, notes, comments…) are ignored; a filled `website` field marks spam.
 - **Website enquiries** land in `inbound_leads` and on Today's "New enquiries" inbox (Zander's choice: no contact is created from spam). "Add to CRM" creates or matches the person (consent recorded if they ticked the box), a client journey (source Website), the enquiry as an inbound email touch and a reply task due today; "Not a lead" bins it.
-- **Menu:** seven tabs. On phones they wrap onto two rows rather than scrolling, so none is hidden.
+- **Calendar** (migrations `20261023230000`, `20261023230100`): Google Calendar is read live through its secret iCal address (`src/lib/calendar/feed.ts`, cached 5 minutes in memory, 10 MB and 8 s caps; never stored, shown or logged) and parsed with ical.js, repeating events expanded (`ics.ts`). `agenda.ts` merges it with CRM bookings: a booking Cal.com already put in the calendar shows once under its short name and person; guests who are CRM contacts are linked; overlapping busy times are flagged. The Calendar tab shows 14 days; Today shows "Your day". Cal.com itself writes bookings into Google Calendar and checks it for conflicts, so the CRM never writes to Google.
+- **Booking links and QR codes:** `workspace_settings.booking_page_url` and `booking_types` (Campaigns → Booking). `bookingUrl` (`src/lib/crm/booking-links.ts`) pre-fills Cal.com (`name`, `email`, `attendeePhoneNumber` as +27…, `business`) and tags `metadata[source]` = `qr` or `crm`; the webhook stores it as `bookings.source` (`link` otherwise), and a QR booking gives a new journey the source "QR code". QR codes are drawn in the app (qrcode-generator, `src/lib/crm/qr.ts`), full screen at `/qr` and as SVG at `/qr/download`, both behind login. The person page has Book buttons and a Meetings list; the Send panel can add the person's booking link (`{booking_link}`, "Book a time" template).
+- **Meeting outcomes:** `bookings.outcome` (`held` / `no_show`, only while booked; cleared by a reschedule). Today's "How did it go?" lists past meetings without one: "It happened" opens the Log form pre-filled from the booking and marks it held; "Didn't show" notes it and adds a follow-up for the next working day. Insights and the Booking tab count show-up rates and bookings by source. `bookings.meeting_url` (https only, checked in zod and the database) gives Join buttons; Reschedule and Cancel open Cal.com's own pages.
+- **Menu:** eight tabs. On phones they wrap onto two rows rather than scrolling, so none is hidden.
 - **Insights** (`/insights`) are computed in TypeScript from journeys, stage history and touches (`src/lib/crm/insights.ts`, unit-tested), per track and period.
 - **The API returns at most 1,000 rows per request** (`[api] max_rows`), silently. Any read that isn't naturally small (lists, matching, Insights) goes through `fetchAll` (`src/lib/supabase/fetch-all.ts`) with `.order(...).order("id").range(from, to)`.
 - `vitest` runs test files one at a time (`fileParallelism: false`). Parallel in-memory Postgres instances exhausted memory on the dev machine.
@@ -113,6 +116,7 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **Roles:** owner (all), member (later)
 - **Public endpoints:** booking webhook, website-form webhook, BCC email inbound, document share links. Each must verify a signature or secret, be rate-limited, and validate input with zod
 - **Share links (built in 2b):** the token is the secret and is format-checked before any database call; the throttle is per link (30 opens an hour) inside `share_open`. There is no per-IP limit in the app; volume attacks rely on Vercel's platform protection. Revisit if links are abused
+- **Google Calendar address (3c):** the secret iCal address is a credential. It lives only in Vercel (Production, Sensitive), must be a `calendar.google.com` `.ics` address, and is never logged; errors log the message only. Calendar contents are read per request and never stored. If it leaks, Zander resets it in Google and updates Vercel
 - **Data retention:** per-person export and delete/anonymise (POPIA)
 
 ---
@@ -140,7 +144,7 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 
 ### Dev sample data
 
-`supabase/seed.sql`, `seed-phase1c.sql`, `seed-phase2a.sql`, `seed-phase2b.sql`, `seed-phase3a.sql` and `seed-phase3b.sql` hold fake people (`@example.test`). Load them with `supabase db push --include-seed` while linked to dev. They are idempotent. Three things stop them reaching production: `[remotes.production.db.seed] enabled = false`, a guard in each file that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guards.
+`supabase/seed.sql`, `seed-phase1c.sql`, `seed-phase2a.sql`, `seed-phase2b.sql`, `seed-phase3a.sql`, `seed-phase3b.sql` and `seed-phase3c.sql` hold fake people (`@example.test`). Load them with `supabase db push --include-seed` while linked to dev. They are idempotent. Three things stop them reaching production: `[remotes.production.db.seed] enabled = false`, a guard in each file that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guards.
 
 **Trap:** the CLI runs each seed file once. Editing a file that already ran only updates its recorded hash ("Updating seed hash"); the new rows never arrive. Put new samples in a new file with the same guard, and list it in `[db.seed] sql_paths` in `config.toml`.
 
@@ -167,6 +171,8 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **2026-10-23:** Phase 3b decisions (Zander): the inbound security design as built (per-connection keys stored as fingerprints, sender signatures, narrow door functions, 60 an hour, switch-off); website enquiries go to an inbox for one-tap review; booking prep tasks are due the working day before.
 - **2026-10-23:** Phase 3b on `feature/phase3b-inbound`: the Cal.com and website doors, Connections tab, Today's meetings and enquiry inbox. Signed test calls on localhost covered every path (booked, duplicate, bad signature, reschedule, cancel, unknown key, oversized body, enquiry, spam trap, switched-off key). Migrations `20261023210000` and `20261023210100` are on dev and prod (prod applied 2026-10-23 with Zander's go-ahead; the CLI is linked back to dev; no production connection exists until Zander creates one); `seed-phase3b.sql` loaded on dev only. Merged as PR #8 and live.
 - **2026-10-23:** Cal.com connected on production (the free plan has webhooks). Event types under `cal.com/konzult-analytics/`: `bni-one-to-one` (30 min), `discovery-call` (45 min), `next-stage-kickoff` (60 min), each asking "Cell number" (identifier `attendeePhoneNumber`, required) and "Business name" (`business`, optional). The webhook (version 2021-10-20) sends Booking created, rescheduled and cancelled to the production Cal.com connection. The Ping test passed the signature check, and a test booking and its cancellation reached Today end to end; the test contact was then removed from production with Zander's go-ahead (preview first). The website form (Framer) is not connected yet.
+- **2026-10-23:** Cal.com was already linked to Google Calendar (konzult.info@gmail.com): it adds every booking there and checks it for conflicts. Phase 3c decisions (Zander): the CRM reads Google Calendar through the secret iCal address (read-only, ical.js); new-booking alerts stay Cal.com's own emails (no phone push for now); booking from the CRM opens Cal.com pre-filled (no Cal.com API key); QR codes drawn in the app with qrcode-generator. Zander invited extra improvements: Join, Reschedule and Cancel buttons, overlap warnings, "How did it go?" with show-up rates, and booking source tracking.
+- **2026-10-23:** PR #9 (short meeting names) merged. Phase 3c on `feature/phase3c-calendar`: Calendar tab, "Your day", booking links and QR codes, meeting outcomes. Migrations `20261023230000` and `20261023230100` are on dev only; `seed-phase3c.sql` loaded on dev. Checked on localhost: Cal.com pre-fills name, email, cell and business from the link. Not yet proven: that Cal.com passes `metadata[source]` back in the webhook (falls back to "Booking page" if not); confirm with one real QR booking after release.
 - **Known gap:** touches can only be logged for people, not for a business on its own.
 - **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5). Settings screens for editing sources and exit reasons (tables exist; seeded defaults for now).
 
@@ -201,3 +207,4 @@ None granted yet. Ask Zander before acting.
 - **2026-10-23:** Phase 3b patterns (inbound doors, bookings, enquiry inbox)
 - **2026-10-23:** Cal.com connected on production; one-off production data fixes; short event names in booking notes and tasks
 - **2026-10-23:** website form fields: Contact Number as the cell, other answers kept in the enquiry
+- **2026-10-23:** Phase 3c patterns (calendar, booking links and QR codes, meeting outcomes) and decisions

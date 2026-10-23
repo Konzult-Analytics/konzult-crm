@@ -73,6 +73,25 @@ export function formatDateTime(at: string | Date): string {
   }).format(new Date(at));
 }
 
+/** "14:30" in South Africa. */
+export function formatTime(at: string | Date): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(at));
+}
+
+/** "Mon 26 Oct" for a YYYY-MM-DD date. */
+export function formatDay(date: string): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: ZONE, weekday: "short", day: "numeric", month: "short" }).format(
+    new Date(`${date}T12:00:00${OFFSET}`)
+  );
+}
+
+/** The next weekday after a YYYY-MM-DD date (Friday → Monday). */
+export function nextWorkingDay(date: string): string {
+  let next = addDays(date, 1);
+  while ([0, 6].includes(new Date(`${next}T12:00:00Z`).getUTCDay())) next = addDays(next, 1);
+  return next;
+}
+
 /** "today", "yesterday", "5 days ago", relative to South African today. */
 export function daysAgo(at: string | Date | null | undefined, today: string = saDate()): string {
   if (!at) return "never";
