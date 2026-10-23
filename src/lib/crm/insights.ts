@@ -281,6 +281,42 @@ export function oneToOnesPerWeek(touches: InsightTouch[], today: string, weeks =
   return starts.map((week) => ({ week, count: counts.get(week)! }));
 }
 
+export type InsightProposal = { status: string; value: number; sent_on: string; decided_on: string | null };
+
+export type ProposalStats = {
+  sent: number;
+  sentValue: number;
+  accepted: number;
+  acceptedValue: number;
+  declined: number;
+  waiting: number;
+  waitingValue: number;
+  /** Accepted out of those decided either way. */
+  acceptRate: number | null;
+  /** Median days from sending to a decision. */
+  daysToDecision: number | null;
+};
+
+export function proposalStats(proposals: InsightProposal[]): ProposalStats {
+  const sum = (list: InsightProposal[]) => list.reduce((n, p) => n + p.value, 0);
+  const accepted = proposals.filter((p) => p.status === "accepted");
+  const declined = proposals.filter((p) => p.status === "declined");
+  const waiting = proposals.filter((p) => p.status === "sent");
+  return {
+    sent: proposals.length,
+    sentValue: sum(proposals),
+    accepted: accepted.length,
+    acceptedValue: sum(accepted),
+    declined: declined.length,
+    waiting: waiting.length,
+    waitingValue: sum(waiting),
+    acceptRate: rate(accepted.length, accepted.length + declined.length),
+    daysToDecision: median(
+      [...accepted, ...declined].filter((p) => p.decided_on).map((p) => daysBetween(p.sent_on, p.decided_on!))
+    ),
+  };
+}
+
 export type Headline = { journeys: number; won: number; winRate: number | null; inPlay: number; inPlayValue: number };
 
 /** Journeys started, won (client / active partner), win rate of decided journeys, and what's still in play. */

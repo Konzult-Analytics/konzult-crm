@@ -343,6 +343,7 @@ export type Database = {
         Row: {
           campaign_id: string | null
           chance_pct: number | null
+          client_status: string | null
           closed_at: string | null
           created_at: string
           created_by: string | null
@@ -359,11 +360,14 @@ export type Database = {
           organisation_id: string | null
           parked_until: string | null
           person_id: string | null
+          referral_status: string | null
           referred_by_person_id: string | null
           source_id: string | null
           stage: string
           stage_changed_at: string
           status: string
+          testimonial_quote: string | null
+          testimonial_status: string | null
           track: string
           updated_at: string
           updated_by: string | null
@@ -373,6 +377,7 @@ export type Database = {
         Insert: {
           campaign_id?: string | null
           chance_pct?: number | null
+          client_status?: string | null
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -389,11 +394,14 @@ export type Database = {
           organisation_id?: string | null
           parked_until?: string | null
           person_id?: string | null
+          referral_status?: string | null
           referred_by_person_id?: string | null
           source_id?: string | null
           stage?: string
           stage_changed_at?: string
           status?: string
+          testimonial_quote?: string | null
+          testimonial_status?: string | null
           track: string
           updated_at?: string
           updated_by?: string | null
@@ -403,6 +411,7 @@ export type Database = {
         Update: {
           campaign_id?: string | null
           chance_pct?: number | null
+          client_status?: string | null
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -419,11 +428,14 @@ export type Database = {
           organisation_id?: string | null
           parked_until?: string | null
           person_id?: string | null
+          referral_status?: string | null
           referred_by_person_id?: string | null
           source_id?: string | null
           stage?: string
           stage_changed_at?: string
           status?: string
+          testimonial_quote?: string | null
+          testimonial_status?: string | null
           track?: string
           updated_at?: string
           updated_by?: string | null
@@ -619,6 +631,76 @@ export type Database = {
           },
         ]
       }
+      proposals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          decided_on: string | null
+          id: string
+          journey_id: string
+          notes: string | null
+          sent_on: string
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          value: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          decided_on?: string | null
+          id?: string
+          journey_id: string
+          notes?: string | null
+          sent_on: string
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          value: number
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          decided_on?: string | null
+          id?: string
+          journey_id?: string
+          notes?: string | null
+          sent_on?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journey_overview"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "proposals_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journeys"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           active: boolean
@@ -790,6 +872,7 @@ export type Database = {
         Row: {
           campaign: string | null
           chance_pct: number | null
+          client_status: string | null
           closed_at: string | null
           display_name: string | null
           exit_reason: string | null

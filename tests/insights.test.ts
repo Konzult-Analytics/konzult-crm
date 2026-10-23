@@ -9,6 +9,7 @@ import {
   median,
   oneToOnesPerWeek,
   outreach,
+  proposalStats,
   speed,
   type InsightHistory,
   type InsightJourney,
@@ -146,6 +147,28 @@ describe("insights", () => {
       { week: "2026-10-12", count: 1 },
       { week: "2026-10-19", count: 2 },
     ]);
+  });
+
+  it("sums up proposals: values, acceptance rate and days to a decision", () => {
+    expect(
+      proposalStats([
+        { status: "accepted", value: 7500, sent_on: "2026-10-01", decided_on: "2026-10-05" },
+        { status: "declined", value: 12000, sent_on: "2026-10-02", decided_on: "2026-10-12" },
+        { status: "accepted", value: 9000, sent_on: "2026-10-03", decided_on: "2026-10-09" },
+        { status: "sent", value: 7500, sent_on: "2026-10-20", decided_on: null },
+      ])
+    ).toEqual({
+      sent: 4,
+      sentValue: 36000,
+      accepted: 2,
+      acceptedValue: 16500,
+      declined: 1,
+      waiting: 1,
+      waitingValue: 7500,
+      acceptRate: 2 / 3,
+      daysToDecision: 6,
+    });
+    expect(proposalStats([])).toMatchObject({ sent: 0, acceptRate: null, daysToDecision: null });
   });
 
   it("takes medians of odd and even lists", () => {

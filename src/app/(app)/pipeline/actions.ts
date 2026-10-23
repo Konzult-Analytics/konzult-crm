@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { saDate } from "@/lib/crm/dates";
-import { fields, optionalDate, optionalText, type FormState } from "@/lib/crm/forms";
+import { fields, optionalDate, optionalEnum, optionalText, type FormState } from "@/lib/crm/forms";
+import { CLIENT_STATUSES, REFERRAL_STATUSES, TESTIMONIAL_STATUSES, keysOf } from "@/lib/crm/labels";
 import { isStage, isTrack } from "@/lib/crm/stages";
 
 async function loadJourney(journeyId: string) {
@@ -131,6 +132,30 @@ export async function saveFit(journeyId: string, _prev: FormState, formData: For
   if (error) {
     console.error("save fit failed", error);
     return { error: "Couldn't save the fit check. Try again." };
+  }
+  revalidatePath("/", "layout");
+  return null;
+}
+
+const careSchema = z.object({
+  client_status: z.enum(keysOf(CLIENT_STATUSES)),
+  testimonial_status: optionalEnum(keysOf(TESTIMONIAL_STATUSES)),
+  testimonial_quote: optionalText(2000),
+  referral_status: optionalEnum(keysOf(REFERRAL_STATUSES)),
+});
+
+export async function saveClientCare(journeyId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { supabase, journey } = await loadJourney(journeyId);
+  if (!journey || journey.track !== "client" || journey.stage !== "client") {
+    return { error: "Client care is for won clients only." };
+  }
+  const parsed = careSchema.safeParse(fields(formData));
+  if (!parsed.success) return { error: "Pick a status. A testimonial can be up to 2,000 characters." };
+
+  const { error } = await supabase.from("journeys").update(parsed.data).eq("id", journeyId);
+  if (error) {
+    console.error("save client care failed", error);
+    return { error: "Couldn't save. Try again." };
   }
   revalidatePath("/", "layout");
   return null;

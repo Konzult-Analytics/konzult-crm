@@ -11,14 +11,16 @@ import {
   historyByJourney,
   oneToOnesPerWeek,
   outreach,
+  proposalStats,
   speed,
   type InsightTouch,
   type OutreachRow,
   type SourceRow,
 } from "@/lib/crm/insights";
+import { rands } from "@/lib/crm/money";
 import { TRACKS, TRACK_LABEL, isTrack } from "@/lib/crm/stages";
 import { fetchAll } from "@/lib/supabase/fetch-all";
-import { Bar, Empty, SplitBar, Stat, pct, rands } from "./charts";
+import { Bar, Empty, Figure, SplitBar, Stat, pct } from "./charts";
 
 const PERIODS = [
   { key: "90", label: "90 days", days: 90 },
@@ -132,11 +134,17 @@ export default async function InsightsPage({
   const track = isTrack(params.track) ? params.track : "client";
   const period = PERIODS.find((p) => p.key === params.period) ?? PERIODS[2];
   const today = saDate();
-  const since = period.days ? `${addDays(today, -period.days)}T00:00:00+02:00` : null;
+  const sinceDate = period.days ? addDays(today, -period.days) : null;
+  const since = sinceDate ? `${sinceDate}T00:00:00+02:00` : null;
   const { supabase } = await requireMfaSession();
 
-  const [{ data: journeyRows, error }, { data: historyRows }, { data: touchRows }, { data: oneToOneRows }] =
-    await Promise.all([
+  const [
+    { data: journeyRows, error },
+    { data: historyRows },
+    { data: touchRows },
+    { data: oneToOneRows },
+    { data: proposalRows },
+  ] = await Promise.all([
       fetchAll((from, to) => {
         const q = supabase
           .from("journey_overview")
@@ -162,6 +170,10 @@ export default async function InsightsPage({
         .select("type, direction, outcome, occurred_at, journey_id, meeting_setting")
         .eq("meeting_setting", "bni_one_to_one")
         .gte("occurred_at", `${addDays(today, -63)}T00:00:00+02:00`),
+      fetchAll((from, to) => {
+        const q = supabase.from("proposals").select("status, value, sent_on, decided_on").order("id").range(from, to);
+        return sinceDate ? q.gte("sent_on", sinceDate) : q;
+      }),
     ]);
   if (error) console.error("insights failed", error);
 
@@ -179,6 +191,7 @@ export default async function InsightsPage({
   const campaigns = outreach(trackTouches, "campaign");
   const ends = fallOut(journeys, history, track);
   const pace = speed(journeys, history, touches, track);
+  const offers = proposalStats(proposalRows);
   const weeks = oneToOnesPerWeek(
     (oneToOneRows ?? []).map((t) => ({ ...t, campaign: null })),
     today
@@ -252,6 +265,29 @@ export default async function InsightsPage({
           </ol>
         )}
       </Section>
+
+      {isClient && (
+        <Section title="Proposals" hint="Proposals sent in this period, and how they were decided.">
+          {offers.sent === 0 ? (
+            <Empty>No proposals sent in this period yet.</Empty>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Figure label="Sent" value={String(offers.sent)} note={rands(offers.sentValue)} />
+              <Figure label="Accepted" value={String(offers.accepted)} note={rands(offers.acceptedValue)} />
+              <Figure
+                label="Acceptance rate"
+                value={pct(offers.acceptRate)}
+                note={`${offers.declined} declined · ${offers.waiting} waiting${offers.waiting ? ` (${rands(offers.waitingValue)})` : ""}`}
+              />
+              <Figure
+                label="Days to a decision"
+                value={offers.daysToDecision === null ? "–" : String(offers.daysToDecision)}
+                note="typical (median)"
+              />
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section title="Where they come from" hint="Each source, and how far its journeys got.">
         {sources.length ? <SourceTable rows={sources} first="Source" wonLabel={wonLabel} showValue={isClient} /> : <Empty>No journeys yet.</Empty>}
