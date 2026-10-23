@@ -30,6 +30,7 @@ const touchSchema = z.object({
   follow_up_on: optionalDate,
   meeting_purpose: optionalEnum(keysOf(MEETING_PURPOSES)),
   meeting_setting: optionalEnum(keysOf(MEETING_SETTINGS)),
+  booking_id: optionalUuid,
 });
 
 export async function logTouch(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -89,6 +90,17 @@ export async function logTouch(_prev: FormState, formData: FormData): Promise<Fo
       const { error: moveError } = await supabase.from("journeys").update({ stage: next }).eq("id", journey.id);
       if (moveError) console.error("advance stage failed", moveError);
     }
+  }
+
+  // Logged from "How did it go?": the booked meeting happened.
+  if (t.booking_id && isMeeting) {
+    const { error: bookingError } = await supabase
+      .from("bookings")
+      .update({ outcome: "held", outcome_at: new Date().toISOString() })
+      .eq("id", t.booking_id)
+      .eq("person_id", person.id)
+      .eq("status", "booked");
+    if (bookingError) console.error("mark booking held failed", bookingError);
   }
 
   if (t.follow_up_on) {

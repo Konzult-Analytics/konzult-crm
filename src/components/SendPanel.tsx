@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { prepareSend } from "@/app/(app)/people/send-actions";
-import { mergeFields, sendBlock, sendPurpose, type Purpose } from "@/lib/crm/messages";
+import { mergeFields, sendBlock, sendPurpose, swapBookingLink, type Purpose } from "@/lib/crm/messages";
 
 export type SendTemplate = { id: string; name: string; purpose: string; subject: string | null; body: string };
 export type SendDocument = { id: string; title: string; kind: string; is_library: boolean };
@@ -26,6 +26,7 @@ export default function SendPanel({
   templates,
   documents,
   campaigns,
+  bookingLinks,
 }: {
   personId: string;
   firstName: string;
@@ -39,9 +40,12 @@ export default function SendPanel({
   templates: SendTemplate[];
   documents: SendDocument[];
   campaigns: { id: string; name: string }[];
+  /** This person's pre-filled Cal.com links, one per event type. */
+  bookingLinks: { label: string; url: string }[];
 }) {
   const ctx = { firstName, fullName, business };
   const [templateId, setTemplateId] = useState("");
+  const [bookingLink, setBookingLink] = useState<string | null>(null);
   const [docIds, setDocIds] = useState<string[]>([]);
   const [campaignId, setCampaignId] = useState("");
   const [subject, setSubject] = useState("");
@@ -62,9 +66,18 @@ export default function SendPanel({
     const t = templates.find((x) => x.id === id);
     if (t) {
       setSubject(mergeFields(t.subject ?? "", ctx));
-      setBody(mergeFields(t.body, ctx));
+      // A template asking for {booking_link} gets the first event type's link, which can be changed below.
+      const link = t.body.includes("{booking_link}") ? (bookingLinks[0]?.url ?? null) : null;
+      setBody(swapBookingLink(mergeFields(t.body, ctx), null, link));
+      setBookingLink(link);
     }
     setResult(null);
+  };
+
+  const chooseBookingLink = (url: string) => {
+    const next = url || null;
+    setBody((b) => swapBookingLink(b, bookingLink, next));
+    setBookingLink(next);
   };
 
   const send = (channel: "email" | "whatsapp") =>
@@ -138,6 +151,25 @@ export default function SendPanel({
                 </div>
               ))}
           </fieldset>
+        )}
+
+        {bookingLinks.length > 0 && (
+          <div>
+            <label className="field-label" htmlFor={`booking-${personId}`}>
+              Booking link (optional)
+            </label>
+            <select id={`booking-${personId}`} value={bookingLink ?? ""} onChange={(e) => chooseBookingLink(e.target.value)}>
+              <option value="">No booking link</option>
+              {bookingLinks.map((l) => (
+                <option key={l.url} value={l.url}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-ink-soft">
+              Their details are filled in on your Cal.com page, so booking takes them one tap.
+            </p>
+          </div>
         )}
 
         {campaigns.length > 0 && (

@@ -1,8 +1,14 @@
 import Link from "next/link";
+import AgendaList from "@/components/AgendaList";
+import CalendarStatus from "@/components/CalendarStatus";
 import TaskItem from "@/components/TaskItem";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { loadAgenda } from "@/lib/calendar/load";
 import { oneToOneTarget, oneToOnesThisWeek } from "@/lib/crm/bni";
+import { BOOKING_SOURCES, bookingChangeUrls } from "@/lib/crm/booking-links";
+import { bookingSettings } from "@/lib/crm/booking-settings";
 import { addDays, daysAgo, formatDate, formatDateTime, saDate } from "@/lib/crm/dates";
+import { labelOf } from "@/lib/crm/labels";
 import { personName } from "@/lib/crm/people";
 import { stageLabel } from "@/lib/crm/stages";
 import { fetchAll } from "@/lib/supabase/fetch-all";
@@ -19,10 +25,13 @@ import {
   splitTasks,
   unansweredStreak,
 } from "@/lib/crm/today";
+import { markNoShow } from "./calendar/actions";
 import { addLead, discardLead } from "./inbound/actions";
 import { closeNeverResponded } from "./pipeline/actions";
 
 const AWAITING_SHOWN = 8;
+/** Meetings older than this no longer ask how they went. */
+const WRAP_UP_DAYS = 30;
 
 function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
@@ -48,15 +57,26 @@ function stageText(j: { track: string | null; stage: string | null }) {
 export default async function TodayPage() {
   const { supabase } = await requireMfaSession();
   const today = saDate();
-  const [target, oneToOnes, { data: meetings }, { data: enquiries }] = await Promise.all([
+  const now = new Date().toISOString();
+  const [target, oneToOnes, agenda, booking, { data: meetings }, { data: held }, { data: enquiries }] = await Promise.all([
     oneToOneTarget(supabase),
     oneToOnesThisWeek(supabase, today),
+    loadAgenda(supabase, today, 1),
+    bookingSettings(supabase),
     supabase
       .from("bookings")
-      .select("id, title, starts_at, person_id, people(first_name, last_name)")
+      .select("id, external_uid, title, starts_at, source, person_id, people(first_name, last_name)")
       .eq("status", "booked")
-      .gte("starts_at", `${today}T00:00:00+02:00`)
+      .gte("starts_at", `${addDays(today, 1)}T00:00:00+02:00`)
       .lt("starts_at", `${addDays(today, 8)}T00:00:00+02:00`)
+      .order("starts_at"),
+    supabase
+      .from("bookings")
+      .select("id, title, starts_at, ends_at, person_id, people(first_name, last_name)")
+      .eq("status", "booked")
+      .is("outcome", null)
+      .gte("starts_at", `${addDays(today, -WRAP_UP_DAYS)}T00:00:00+02:00`)
+      .lt("starts_at", now)
       .order("starts_at"),
     supabase
       .from("inbound_leads")
@@ -64,6 +84,8 @@ export default async function TodayPage() {
       .eq("status", "new")
       .order("received_at"),
   ]);
+  const yourDay = agenda.days[0]?.items ?? [];
+  const wrapUp = (held ?? []).filter((b) => Date.parse(b.ends_at ?? b.starts_at) <= Date.parse(now));
 
   const [{ data: tasks }, { data: journeys }, { data: people }, { data: touches }] = await Promise.all([
     supabase
@@ -129,7 +151,9 @@ export default async function TodayPage() {
   const birthdays = birthdaysSoon(people ?? [], today);
 
   const nothing =
-    (meetings ?? []).length +
+    yourDay.length +
+      wrapUp.length +
+      (meetings ?? []).length +
       (enquiries ?? []).length +
       due.length +
       upcoming.length +
@@ -143,22 +167,41 @@ export default async function TodayPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Today</h1>
-        <p className="text-sm text-ink-soft">
-          {new Intl.DateTimeFormat("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "long", day: "numeric", month: "long" }).format(new Date())}
-          {" · "}
-          {due.length} due · {cold.length} going cold
-          {target.on && (
-            <>
-              {" · "}
-              <Link href="/campaigns?tab=bni" className={oneToOnes >= target.target ? "text-ink" : undefined}>
-                {oneToOnes} of {target.target} one-to-ones this week
-              </Link>
-            </>
-          )}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Today</h1>
+          <p className="text-sm text-ink-soft">
+            {new Intl.DateTimeFormat("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "long", day: "numeric", month: "long" }).format(new Date())}
+            {" · "}
+            {due.length} due · {cold.length} going cold
+            {target.on && (
+              <>
+                {" · "}
+                <Link href="/campaigns?tab=bni" className={oneToOnes >= target.target ? "text-ink" : undefined}>
+                  {oneToOnes} of {target.target} one-to-ones this week
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+        {booking.types.length > 0 && (
+          <Link href="/qr" className="btn btn-ghost btn-sm">
+            Booking QR
+          </Link>
+        )}
       </div>
+
+      {(yourDay.length > 0 || agenda.state === "error") && (
+        <Section title="Your day" count={yourDay.length}>
+          {agenda.state === "error" && <CalendarStatus state={agenda.state} readAt={agenda.readAt} />}
+          {yourDay.length > 0 && <AgendaList days={agenda.days} today={today} bookingPage={booking.page} headings={false} />}
+          <p className="text-sm">
+            <Link href="/calendar" className="link">
+              See the next two weeks
+            </Link>
+          </p>
+        </Section>
+      )}
 
       {nothing && (
         <div className="card space-y-2 text-sm">
@@ -204,12 +247,12 @@ export default async function TodayPage() {
         </Section>
       )}
 
-      {(meetings ?? []).length > 0 && (
-        <Section title="Meetings booked (next 7 days)" count={(meetings ?? []).length}>
+      {wrapUp.length > 0 && (
+        <Section title="How did it go?" count={wrapUp.length}>
           <ul className="card divide-y divide-line p-0">
-            {(meetings ?? []).map((m) => (
-              <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm">
-                <span>
+            {wrapUp.map((m) => (
+              <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+                <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">
                   {m.person_id ? (
                     <Link href={`/people/${m.person_id}`} className="font-medium hover:underline">
                       {m.people ? personName(m.people) : "Someone"}
@@ -217,14 +260,62 @@ export default async function TodayPage() {
                   ) : (
                     <span className="font-medium">Someone</span>
                   )}
-                  <span className="text-ink-soft"> · {m.title}</span>
+                  <span className="text-ink-soft">
+                    {" "}
+                    · {m.title} · {formatDateTime(m.starts_at)}
+                  </span>
                 </span>
-                <span className={saDate(new Date(m.starts_at)) === today ? "font-medium text-accent" : "text-ink-soft"}>
-                  {saDate(new Date(m.starts_at)) === today ? "Today, " : ""}
-                  {formatDateTime(m.starts_at)}
+                <span className="flex gap-2">
+                  {m.person_id && (
+                    <Link href={`/log?person=${m.person_id}&booking=${m.id}`} className="btn btn-accent btn-sm">
+                      It happened: log it
+                    </Link>
+                  )}
+                  <form action={markNoShow}>
+                    <input type="hidden" name="booking_id" value={m.id} />
+                    <button type="submit" className="btn btn-ghost btn-sm">
+                      Didn&apos;t show
+                    </button>
+                  </form>
                 </span>
               </li>
             ))}
+          </ul>
+        </Section>
+      )}
+
+      {(meetings ?? []).length > 0 && (
+        <Section title="Booked meetings, next 7 days" count={(meetings ?? []).length}>
+          <ul className="card divide-y divide-line p-0">
+            {(meetings ?? []).map((m) => {
+              const change = bookingChangeUrls(booking.page, m.external_uid);
+              return (
+                <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+                  <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+                    {m.person_id ? (
+                      <Link href={`/people/${m.person_id}`} className="font-medium hover:underline">
+                        {m.people ? personName(m.people) : "Someone"}
+                      </Link>
+                    ) : (
+                      <span className="font-medium">Someone</span>
+                    )}
+                    <span className="text-ink-soft"> · {m.title}</span>
+                    {m.source !== "link" && <span className="badge ml-2">{labelOf(BOOKING_SOURCES, m.source)}</span>}
+                  </span>
+                  <span className="text-ink-soft">{formatDateTime(m.starts_at)}</span>
+                  {change && (
+                    <span className="flex gap-2">
+                      <a href={change.reschedule} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                        Reschedule
+                      </a>
+                      <a href={change.cancel} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                        Cancel
+                      </a>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Section>
       )}

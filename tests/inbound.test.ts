@@ -74,6 +74,25 @@ describe("reading Cal.com events", () => {
       phone: "+27825550101",
       business: "Booker Brands",
       notes: "Cash flow",
+      source: "link",
+      meeting_url: null,
+    });
+  });
+
+  it("reads where a booking came from and its video link, keeping only https links", () => {
+    const tagged = (metadata: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      readCalEvent({ ...created, payload: { ...created.payload, metadata, ...extra } });
+    expect(tagged({ source: "qr", videoCallUrl: "https://app.cal.com/video/abc" })).toMatchObject({
+      source: "qr",
+      meeting_url: "https://app.cal.com/video/abc",
+    });
+    expect(tagged({ source: "crm" }, { location: "https://meet.google.com/abc-defg-hij" })).toMatchObject({
+      source: "crm",
+      meeting_url: "https://meet.google.com/abc-defg-hij",
+    });
+    expect(tagged({ source: "elsewhere", videoCallUrl: "javascript:alert(1)" }, { location: "Office" })).toMatchObject({
+      source: "link",
+      meeting_url: null,
     });
   });
 

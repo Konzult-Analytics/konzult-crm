@@ -3,6 +3,7 @@ import { requireMfaSession } from "@/lib/auth/guard";
 import { addDays, formatDate, saDate } from "@/lib/crm/dates";
 import {
   STRONG_FIT,
+  bookingStats,
   bySource,
   byReferrer,
   fallOut,
@@ -20,6 +21,8 @@ import {
   type SourceRow,
 } from "@/lib/crm/insights";
 import { oneToOneTarget } from "@/lib/crm/bni";
+import { BOOKING_SOURCES } from "@/lib/crm/booking-links";
+import { labelOf } from "@/lib/crm/labels";
 import { rands } from "@/lib/crm/money";
 import { TRACKS, TRACK_LABEL, isTrack } from "@/lib/crm/stages";
 import { fetchAll } from "@/lib/supabase/fetch-all";
@@ -195,7 +198,7 @@ export default async function InsightsPage({
   const ends = fallOut(journeys, history, track);
   const pace = speed(journeys, history, touches, track);
   const offers = proposalStats(proposalRows);
-  const [target, { data: referralRows }] = await Promise.all([
+  const [target, { data: referralRows }, { data: bookingRows }] = await Promise.all([
     oneToOneTarget(supabase),
     fetchAll((from, to) => {
       const q = supabase
@@ -205,7 +208,12 @@ export default async function InsightsPage({
         .range(from, to);
       return sinceDate ? q.gte("referred_on", sinceDate) : q;
     }),
+    fetchAll((from, to) => {
+      const q = supabase.from("bookings").select("status, outcome, source, starts_at").order("id").range(from, to);
+      return since ? q.gte("created_at", since) : q;
+    }),
   ]);
+  const meetings = bookingStats(bookingRows);
   const referrals = referralStats(
     referralRows.map((r) => ({ ...r, member: [r.member?.first_name, r.member?.last_name].filter(Boolean).join(" ") }))
   );
@@ -305,6 +313,31 @@ export default async function InsightsPage({
           )}
         </Section>
       )}
+
+      <Section title="Booked meetings" hint="Meetings booked through Cal.com in this period, whether they happened, and which link brought them.">
+        {meetings.booked === 0 ? (
+          <Empty>No bookings in this period yet.</Empty>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Figure label="Booked" value={String(meetings.booked)} note={`${meetings.cancelled} cancelled · ${meetings.upcoming} still to come`} />
+              <Figure label="Happened" value={String(meetings.held)} note={`${meetings.noShow} didn't show`} />
+              <Figure label="Show-up rate" value={pct(meetings.showRate)} note="of meetings with an outcome logged" />
+              <Figure label="Not logged yet" value={String(meetings.unrecorded)} note="past meetings: see Today" />
+            </div>
+            <dl className="grid grid-cols-3 gap-3 text-sm">
+              {meetings.bySource.map((s) => (
+                <div key={s.source}>
+                  <dt className="text-xs text-ink-soft">{labelOf(BOOKING_SOURCES, s.source)}</dt>
+                  <dd className="tabular-nums">
+                    {s.booked} booked · {s.held} happened
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
+      </Section>
 
       <Section title="Where they come from" hint="Each source, and how far its journeys got.">
         {sources.length ? <SourceTable rows={sources} first="Source" wonLabel={wonLabel} showValue={isClient} /> : <Empty>No journeys yet.</Empty>}

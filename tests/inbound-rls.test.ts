@@ -144,6 +144,41 @@ describe("inbound doors", { timeout: 30_000 }, () => {
     });
   });
 
+  it("remembers a QR-code booking and its video link, and drops a link that isn't https", async () => {
+    const quinn = { email: "quinn@example.test", phone: null, name: "Quinn Scanner", business: null };
+    expect(await cal(booking("q1", { ...quinn, source: "qr", meeting_url: "https://app.cal.com/video/q1" }))).toBe("booked");
+    const r = await db.admin(`
+      select b.source, b.meeting_url, s.label as journey_source,
+             (select summary from public.interactions i join public.interaction_people ip on ip.interaction_id = i.id
+              where ip.person_id = b.person_id and i.created_via = 'booking') as note
+      from public.bookings b
+      join public.journeys j on j.id = b.journey_id
+      join public.sources s on s.id = j.source_id
+      where b.external_uid = 'q1'`);
+    expect(r.rows[0]).toMatchObject({ source: "qr", meeting_url: "https://app.cal.com/video/q1", journey_source: "QR code" });
+    expect(r.rows[0].note).toContain("from your QR code");
+
+    const rita = { email: "rita@example.test", phone: null, name: "Rita Link", business: null };
+    expect(await cal(booking("q2", { ...rita, source: "sneaky", meeting_url: "javascript:alert(1)" }))).toBe("booked");
+    expect((await db.admin(`select source, meeting_url from public.bookings where external_uid = 'q2'`)).rows[0]).toEqual({
+      source: "link",
+      meeting_url: null,
+    });
+  });
+
+  it("records whether a meeting happened only while it's on, and forgets it when the meeting moves", async () => {
+    await db.as(OWNER, "aal2", `update public.bookings set outcome = 'held', outcome_at = now() where external_uid = 'q1'`);
+    const moved = { ...booking("q1-new"), event: "rescheduled", previous_uid: "q1", email: "quinn@example.test", phone: null };
+    expect(await cal(moved)).toBe("rescheduled");
+    expect((await db.admin(`select outcome, meeting_url from public.bookings where external_uid = 'q1-new'`)).rows[0]).toEqual({
+      outcome: null,
+      meeting_url: "https://app.cal.com/video/q1",
+    });
+    await expect(
+      db.as(OWNER, "aal2", `update public.bookings set outcome = 'no_show' where external_uid = 'b1-new'`)
+    ).rejects.toThrow(/bookings_outcome_needs_booking/);
+  });
+
   it("puts website enquiries in the inbox once each, with their consent", async () => {
     const lead = { event: "lead", id: "sub-1", name: "Wendy Web", email: "Wendy@Example.test", phone: "082 555 0202", business: "Web Works", message: "Can you help with pricing?", marketing_consent: true };
     expect(await web(lead)).toBe("received");

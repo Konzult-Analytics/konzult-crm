@@ -60,6 +60,7 @@ Claude starts the app (`pnpm dev`). Open http://localhost:3000, log in, scan the
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | prod project URL | dev project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | prod publishable key | dev publishable key |
+| `GOOGLE_CALENDAR_ICS_URL` | Google Calendar's "Secret address in iCal format" (Sensitive; Zander enters it) | not set: preview shows a sample calendar |
 
 ## 7. Production database (Claude, with your go-ahead)
 

@@ -286,6 +286,42 @@ export function oneToOnesPerWeek(touches: InsightTouch[], today: string, weeks =
   return starts.map((week) => ({ week, count: counts.get(week)! }));
 }
 
+export type InsightBooking = { status: string; outcome: string | null; source: string; starts_at: string };
+
+export type BookingStats = {
+  booked: number;
+  cancelled: number;
+  held: number;
+  noShow: number;
+  /** Past meetings still waiting for "how did it go?". */
+  unrecorded: number;
+  upcoming: number;
+  /** Held out of those whose outcome was recorded. */
+  showRate: number | null;
+  bySource: { source: string; booked: number; held: number }[];
+};
+
+export function bookingStats(bookings: InsightBooking[], now: Date = new Date()): BookingStats {
+  const on = bookings.filter((b) => b.status === "booked");
+  const past = on.filter((b) => Date.parse(b.starts_at) <= now.getTime());
+  const held = on.filter((b) => b.outcome === "held").length;
+  const noShow = on.filter((b) => b.outcome === "no_show").length;
+  return {
+    booked: bookings.length,
+    cancelled: bookings.length - on.length,
+    held,
+    noShow,
+    unrecorded: past.filter((b) => !b.outcome).length,
+    upcoming: on.length - past.length,
+    showRate: rate(held, held + noShow),
+    bySource: ["link", "qr", "crm"].map((source) => ({
+      source,
+      booked: bookings.filter((b) => b.source === source).length,
+      held: on.filter((b) => b.source === source && b.outcome === "held").length,
+    })),
+  };
+}
+
 export type InsightProposal = { status: string; value: number; sent_on: string; decided_on: string | null };
 
 export type ProposalStats = {
