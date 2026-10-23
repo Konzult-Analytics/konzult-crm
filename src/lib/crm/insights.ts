@@ -64,6 +64,11 @@ export function median(values: number[]): number | null {
 
 const rate = (part: number, whole: number) => (whole ? part / whole : null);
 
+/** A share as a whole percentage, or a dash when there's nothing to divide. */
+export function pct(value: number | null): string {
+  return value === null ? "–" : `${Math.round(value * 100)}%`;
+}
+
 export type FunnelStep = {
   key: string;
   label: string;
@@ -313,6 +318,81 @@ export function proposalStats(proposals: InsightProposal[]): ProposalStats {
     acceptRate: rate(accepted.length, accepted.length + declined.length),
     daysToDecision: median(
       [...accepted, ...declined].filter((p) => p.decided_on).map((p) => daysBetween(p.sent_on, p.decided_on!))
+    ),
+  };
+}
+
+export type CampaignNumbers = {
+  people: number;
+  sent: number;
+  replies: number;
+  /** Journeys that got at least as far as a meeting, a proposal, or a won client / active partner. */
+  meetings: number;
+  proposals: number;
+  won: number;
+};
+
+/** One campaign's results: its journeys (with stage history) and its touches. */
+export function campaignNumbers(
+  journeys: (InsightJourney & { person_id: string | null })[],
+  history: Map<string, InsightHistory[]>,
+  touches: (InsightTouch & { person_ids: string[] })[]
+): CampaignNumbers {
+  const people = new Set<string>();
+  for (const j of journeys) if (j.person_id) people.add(j.person_id);
+  for (const t of touches) for (const p of t.person_ids) people.add(p);
+  const sent = touches.filter((t) => t.direction === "out");
+  const reached = (j: InsightJourney, stage: { client: number; partner: number }) =>
+    isTrack(j.track) && furthest(j, history) >= stage[j.track];
+  return {
+    people: people.size,
+    sent: sent.length,
+    replies: sent.filter((t) => t.outcome && REPLIED.has(t.outcome)).length,
+    meetings: journeys.filter((j) => reached(j, { client: 2, partner: 2 })).length,
+    proposals: journeys.filter((j) => j.track === "client" && reached(j, { client: 3, partner: 99 })).length,
+    won: journeys.filter((j) => reached(j, { client: STAGES.client.length - 1, partner: STAGES.partner.length - 1 })).length,
+  };
+}
+
+export type InsightReferral = { direction: string; status: string; closed_value: number | null; member: string };
+
+export type MemberReferrals = { name: string; given: number; received: number; givenValue: number; receivedValue: number };
+
+export type ReferralStats = {
+  given: number;
+  received: number;
+  /** Business members closed from referrals Zander gave them (their TYFCB to him). */
+  givenValue: number;
+  /** Business Zander won from referrals members gave him. */
+  receivedValue: number;
+  receivedWon: number;
+  byMember: MemberReferrals[];
+};
+
+export function referralStats(referrals: InsightReferral[]): ReferralStats {
+  const value = (r: InsightReferral) => (r.status === "won" ? (r.closed_value ?? 0) : 0);
+  const members = new Map<string, MemberReferrals>();
+  for (const r of referrals) {
+    const m = members.get(r.member) ?? { name: r.member, given: 0, received: 0, givenValue: 0, receivedValue: 0 };
+    if (r.direction === "given") {
+      m.given++;
+      m.givenValue += value(r);
+    } else {
+      m.received++;
+      m.receivedValue += value(r);
+    }
+    members.set(r.member, m);
+  }
+  const given = referrals.filter((r) => r.direction === "given");
+  const received = referrals.filter((r) => r.direction === "received");
+  return {
+    given: given.length,
+    received: received.length,
+    givenValue: given.reduce((n, r) => n + value(r), 0),
+    receivedValue: received.reduce((n, r) => n + value(r), 0),
+    receivedWon: received.filter((r) => r.status === "won").length,
+    byMember: [...members.values()].sort(
+      (a, b) => b.given + b.received - (a.given + a.received) || a.name.localeCompare(b.name)
     ),
   };
 }

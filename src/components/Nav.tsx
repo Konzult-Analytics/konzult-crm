@@ -3,20 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// `short` and the tighter phone spacing keep all six tabs on a phone screen.
+// On phones the tabs wrap onto two rows so every one stays visible; `short` keeps them compact.
 const LINKS: { href: string; label: string; short?: string }[] = [
   { href: "/", label: "Today" },
   { href: "/pipeline", label: "Pipeline" },
   { href: "/people", label: "People" },
   { href: "/organisations", label: "Organisations", short: "Orgs" },
   { href: "/insights", label: "Insights" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/library", label: "Library" },
 ];
 
 export default function Nav() {
   const path = usePathname();
   return (
-    <nav aria-label="Main" className="-mb-px flex gap-0.5 overflow-x-auto sm:gap-1">
+    <nav aria-label="Main" className="-mb-px flex flex-wrap gap-x-0.5 sm:flex-nowrap sm:gap-1 sm:overflow-x-auto">
       {LINKS.map((l) => {
         const active = l.href === "/" ? path === "/" : path.startsWith(l.href);
         return (

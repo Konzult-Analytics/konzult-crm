@@ -6,11 +6,13 @@ import Documents from "@/components/Documents";
 import FitCheck from "@/components/FitCheck";
 import JourneyControls from "@/components/JourneyControls";
 import Proposals from "@/components/Proposals";
+import { ReferralForm, ReferralList } from "@/components/Referrals";
 import SendPanel from "@/components/SendPanel";
 import SentLinks from "@/components/SentLinks";
 import TaskItem from "@/components/TaskItem";
 import Timeline from "@/components/Timeline";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { loadReferrals } from "@/lib/crm/bni";
 import { daysAgo, formatDate, saDate } from "@/lib/crm/dates";
 import { exitReasonOptions, personOptions, sourceOptions } from "@/lib/crm/lookups";
 import { personName, whatsappNumber } from "@/lib/crm/people";
@@ -75,27 +77,30 @@ export default async function PersonPage({
       personOptions(supabase),
     ]);
 
-  const [{ data: templates }, { data: library }, { data: documents }, { data: sends }, { data: asked }] = await Promise.all([
-    supabase.from("templates").select("id, name, purpose, subject, body").eq("active", true).order("sort_order"),
-    supabase.from("documents").select("id, title, kind, is_library").eq("is_library", true).eq("archived", false).order("title"),
-    supabase
-      .from("documents")
-      .select("id, title, kind, is_library, file_name, size_bytes, url, version, created_at")
-      .eq("person_id", id)
-      .eq("archived", false)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("asset_sends")
-      .select("id, channel, sent_at, open_count, first_opened_at, last_opened_at, revoked_at, expires_at, share_token, documents(title)")
-      .eq("person_id", id)
-      .order("sent_at", { ascending: false }),
-    supabase
-      .from("interactions")
-      .select("id, templates!inner(purpose), interaction_people!inner(person_id)")
-      .eq("interaction_people.person_id", id)
-      .eq("templates.purpose", "consent_request")
-      .limit(1),
-  ]);
+  const [{ data: templates }, { data: library }, { data: documents }, { data: sends }, { data: asked }, referrals, { data: campaigns }] =
+    await Promise.all([
+      supabase.from("templates").select("id, name, purpose, subject, body").eq("active", true).order("sort_order"),
+      supabase.from("documents").select("id, title, kind, is_library").eq("is_library", true).eq("archived", false).order("title"),
+      supabase
+        .from("documents")
+        .select("id, title, kind, is_library, file_name, size_bytes, url, version, created_at")
+        .eq("person_id", id)
+        .eq("archived", false)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("asset_sends")
+        .select("id, channel, sent_at, open_count, first_opened_at, last_opened_at, revoked_at, expires_at, share_token, documents(title)")
+        .eq("person_id", id)
+        .order("sent_at", { ascending: false }),
+      supabase
+        .from("interactions")
+        .select("id, templates!inner(purpose), interaction_people!inner(person_id)")
+        .eq("interaction_people.person_id", id)
+        .eq("templates.purpose", "consent_request")
+        .limit(1),
+      loadReferrals(supabase, id),
+      supabase.from("campaigns").select("id, name").eq("active", true).order("name"),
+    ]);
 
   const name = personName(person);
   const wa = whatsappNumber(person.phone);
@@ -293,12 +298,30 @@ export default async function PersonPage({
         consentRequestSent={(asked ?? []).length > 0}
         templates={templates ?? []}
         documents={[...(library ?? []), ...(documents ?? [])]}
+        campaigns={campaigns ?? []}
       />
 
       {(sends ?? []).length > 0 && (
         <section className="space-y-3">
           <h2 className="section-title">Links sent</h2>
           <SentLinks sends={(sends ?? []).map((s) => ({ ...s, title: s.documents?.title ?? "Document" }))} />
+        </section>
+      )}
+
+      {(person.is_bni_member || referrals.length > 0) && (
+        <section className="space-y-3">
+          <h2 className="section-title">BNI referrals</h2>
+          <div className="card space-y-3">
+            <ReferralList referrals={referrals} />
+            {person.is_bni_member && (
+              <details>
+                <summary className="cursor-pointer text-sm font-medium">Record a referral with {person.first_name}</summary>
+                <div className="mt-3">
+                  <ReferralForm people={people} memberId={person.id} />
+                </div>
+              </details>
+            )}
+          </div>
         </section>
       )}
 

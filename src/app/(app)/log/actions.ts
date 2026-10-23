@@ -20,6 +20,7 @@ import { advanceFor, isTrack } from "@/lib/crm/stages";
 const touchSchema = z.object({
   person_id: z.uuid(),
   journey_id: optionalUuid,
+  campaign_id: optionalUuid,
   type: z.enum(keysOf(TOUCH_TYPES)),
   direction: optionalEnum(["out", "in"]),
   outcome: optionalEnum(keysOf(OUTCOMES)),
@@ -61,6 +62,7 @@ export async function logTouch(_prev: FormState, formData: FormData): Promise<Fo
       summary: t.summary,
       next_step: t.next_step,
       journey_id: journey?.id ?? null,
+      campaign_id: t.campaign_id,
       organisation_id: person.organisation_id,
       meeting_purpose: isMeeting ? t.meeting_purpose : null,
       meeting_setting: isMeeting ? t.meeting_setting : null,

@@ -11,16 +11,19 @@ import {
   historyByJourney,
   oneToOnesPerWeek,
   outreach,
+  pct,
   proposalStats,
+  referralStats,
   speed,
   type InsightTouch,
   type OutreachRow,
   type SourceRow,
 } from "@/lib/crm/insights";
+import { oneToOneTarget } from "@/lib/crm/bni";
 import { rands } from "@/lib/crm/money";
 import { TRACKS, TRACK_LABEL, isTrack } from "@/lib/crm/stages";
 import { fetchAll } from "@/lib/supabase/fetch-all";
-import { Bar, Empty, Figure, SplitBar, Stat, pct } from "./charts";
+import { Bar, Empty, Figure, SplitBar, Stat } from "./charts";
 
 const PERIODS = [
   { key: "90", label: "90 days", days: 90 },
@@ -192,6 +195,20 @@ export default async function InsightsPage({
   const ends = fallOut(journeys, history, track);
   const pace = speed(journeys, history, touches, track);
   const offers = proposalStats(proposalRows);
+  const [target, { data: referralRows }] = await Promise.all([
+    oneToOneTarget(supabase),
+    fetchAll((from, to) => {
+      const q = supabase
+        .from("referrals")
+        .select("direction, status, closed_value, member:people!referrals_workspace_id_member_person_id_fkey(first_name, last_name)")
+        .order("id")
+        .range(from, to);
+      return sinceDate ? q.gte("referred_on", sinceDate) : q;
+    }),
+  ]);
+  const referrals = referralStats(
+    referralRows.map((r) => ({ ...r, member: [r.member?.first_name, r.member?.last_name].filter(Boolean).join(" ") }))
+  );
   const weeks = oneToOnesPerWeek(
     (oneToOneRows ?? []).map((t) => ({ ...t, campaign: null })),
     today
@@ -202,7 +219,7 @@ export default async function InsightsPage({
   const firstStep = steps[0]?.reached ?? 0;
   const lostTotal = ends.byStage.reduce((n, s) => n + s.ours + s.theirs, 0);
   const lostMax = Math.max(...ends.byStage.map((s) => s.ours + s.theirs), 1);
-  const weekMax = Math.max(...weeks.map((w) => w.count), 1);
+  const weekMax = Math.max(...weeks.map((w) => w.count), target.on ? target.target : 0, 1);
   const href = (change: { track?: string; period?: string }) =>
     `/insights?track=${change.track ?? track}&period=${change.period ?? period.key}`;
 
@@ -427,17 +444,42 @@ export default async function InsightsPage({
         </table>
       </Section>
 
-      <Section title="BNI one-to-ones per week" hint="Meetings logged as a BNI one-to-one, over the last 8 weeks.">
-        <div className="flex h-36 items-end gap-2" role="img" aria-label="One-to-ones per week">
-          {weeks.map((w) => (
-            <div key={w.week} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`Week of ${formatDate(w.week)}: ${w.count}`}>
-              <span className="text-xs tabular-nums">{w.count}</span>
+      <Section title="BNI" hint="One-to-ones over the last 8 weeks, and referrals in this period.">
+        <p className="flex flex-wrap gap-4 text-xs text-ink-soft" aria-label="Legend">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-sm bg-accent" aria-hidden /> One-to-ones held
+          </span>
+          {target.on && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-4 border-t-2 border-dashed border-ink-soft" aria-hidden /> Weekly target ({target.target})
+            </span>
+          )}
+        </p>
+        <div className="pt-5">
+          <div className="relative flex h-32 items-end gap-2" role="img" aria-label="One-to-ones per week">
+            {weeks.map((w) => {
+              const height = (w.count / weekMax) * 100;
+              return (
+                <div
+                  key={w.week}
+                  className="relative flex h-full flex-1 items-end justify-center"
+                  title={`Week of ${formatDate(w.week)}: ${w.count}${target.on ? ` of ${target.target}` : ""}`}
+                >
+                  <div className="w-full max-w-6 rounded-t bg-accent" style={{ height: `${height}%`, minHeight: w.count ? "4px" : "0" }} />
+                  <span className="absolute text-xs tabular-nums" style={{ bottom: `calc(${height}% + 2px)` }}>
+                    {w.count}
+                  </span>
+                </div>
+              );
+            })}
+            {target.on && (
               <div
-                className="w-full max-w-6 rounded-t bg-accent"
-                style={{ height: `${(w.count / weekMax) * 100}%`, minHeight: w.count ? "4px" : "0" }}
+                className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-ink-soft/70"
+                style={{ bottom: `${(target.target / weekMax) * 100}%` }}
+                aria-hidden
               />
-            </div>
-          ))}
+            )}
+          </div>
         </div>
         <div className="flex gap-2 border-t border-line pt-1">
           {weeks.map((w) => (
@@ -445,6 +487,12 @@ export default async function InsightsPage({
               {formatDate(w.week).replace(/ \d{4}$/, "")}
             </span>
           ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4 border-t border-line pt-4 lg:grid-cols-4">
+          <Figure label="Referrals received" value={String(referrals.received)} note={`${referrals.receivedWon} became ${referrals.receivedWon === 1 ? "a client" : "clients"}`} />
+          <Figure label="Business from them" value={rands(referrals.receivedValue)} note="you closed" />
+          <Figure label="Referrals given" value={String(referrals.given)} note="to members" />
+          <Figure label="Business you gave" value={rands(referrals.givenValue)} note="they closed (TYFCB)" />
         </div>
       </Section>
     </div>

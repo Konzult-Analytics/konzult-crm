@@ -8,7 +8,7 @@ import { MEETING_PURPOSES, MEETING_SETTINGS, OUTCOMES, TOUCH_TYPES, type TouchTy
 import { TRACK_LABEL, isTrack, stageLabel } from "@/lib/crm/stages";
 import { logTouch } from "./actions";
 
-export type OpenJourney = { id: string; person_id: string; track: string; stage: string };
+export type OpenJourney = { id: string; person_id: string; track: string; stage: string; campaign_id: string | null };
 
 const FOLLOW_UPS = [
   { days: 2, label: "In 2 days" },
@@ -19,10 +19,12 @@ const FOLLOW_UPS = [
 export default function LogForm({
   people,
   journeys,
+  campaigns,
   initialPersonId,
 }: {
   people: PersonOption[];
   journeys: OpenJourney[];
+  campaigns: { id: string; name: string }[];
   initialPersonId: string | null;
 }) {
   const [state, action] = useActionState(logTouch, null);
@@ -84,6 +86,21 @@ export default function LogForm({
             </option>
           ))}
         </select>
+        {campaigns.length > 0 && (
+          <div>
+            <label className="field-label" htmlFor="campaign_id">
+              Campaign (optional)
+            </label>
+            <select id="campaign_id" name="campaign_id" defaultValue={personJourneys[0]?.campaign_id ?? ""} key={`c-${personId}`}>
+              <option value="">Not part of a campaign</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {personJourneys.length > 0 && (
           <div>
             <label className="field-label" htmlFor="journey_id">

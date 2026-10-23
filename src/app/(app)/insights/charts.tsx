@@ -1,10 +1,6 @@
 // Plain-HTML chart pieces for the Insights page. Marks carry the colour; every
 // number is also printed as text, so nothing relies on colour alone.
 
-export function pct(value: number | null): string {
-  return value === null ? "–" : `${Math.round(value * 100)}%`;
-}
-
 /** A thin horizontal bar, square at the baseline and rounded at the tip. */
 export function Bar({ value, max, title, muted = false }: { value: number; max: number; title: string; muted?: boolean }) {
   const width = max > 0 ? Math.max(value > 0 ? 2 : 0, (value / max) * 100) : 0;

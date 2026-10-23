@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TaskItem from "@/components/TaskItem";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { oneToOneTarget, oneToOnesThisWeek } from "@/lib/crm/bni";
 import { addDays, daysAgo, formatDate, saDate } from "@/lib/crm/dates";
 import { personName } from "@/lib/crm/people";
 import { stageLabel } from "@/lib/crm/stages";
@@ -46,6 +47,7 @@ function stageText(j: { track: string | null; stage: string | null }) {
 export default async function TodayPage() {
   const { supabase } = await requireMfaSession();
   const today = saDate();
+  const [target, oneToOnes] = await Promise.all([oneToOneTarget(supabase), oneToOnesThisWeek(supabase, today)]);
 
   const [{ data: tasks }, { data: journeys }, { data: people }, { data: touches }] = await Promise.all([
     supabase
@@ -129,6 +131,14 @@ export default async function TodayPage() {
           {new Intl.DateTimeFormat("en-ZA", { timeZone: "Africa/Johannesburg", weekday: "long", day: "numeric", month: "long" }).format(new Date())}
           {" · "}
           {due.length} due · {cold.length} going cold
+          {target.on && (
+            <>
+              {" · "}
+              <Link href="/campaigns?tab=bni" className={oneToOnes >= target.target ? "text-ink" : undefined}>
+                {oneToOnes} of {target.target} one-to-ones this week
+              </Link>
+            </>
+          )}
         </p>
       </div>
 
