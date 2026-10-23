@@ -77,6 +77,31 @@ export const REFERRAL_STATUSES = [
   { key: "declined", label: "Declined" },
 ] as const;
 
+// These two mirror 20261023190000_bni_referrals_campaigns.sql.
+export const BNI_REFERRAL_STATUSES = [
+  { key: "open", label: "Open" },
+  { key: "contacted", label: "In contact" },
+  { key: "won", label: "Business closed" },
+  { key: "lost", label: "Didn't happen" },
+] as const;
+
+export const CAMPAIGN_CHANNELS = [
+  { key: "email", label: "Email" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "call", label: "Calls" },
+  { key: "bni_message", label: "BNI Connect" },
+  { key: "mixed", label: "Mixed" },
+] as const;
+
+/** BNI's 1–5 referral temperature. */
+export const TEMPERATURES = [
+  { key: "1", label: "1 · Name only" },
+  { key: "2", label: "2 · Knows you'll call" },
+  { key: "3", label: "3 · Expecting your call" },
+  { key: "4", label: "4 · Keen to meet" },
+  { key: "5", label: "5 · Ready to buy" },
+] as const;
+
 type Option = { readonly key: string; readonly label: string };
 
 export function labelOf(options: readonly Option[], key: string | null | undefined): string {

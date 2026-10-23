@@ -8,17 +8,18 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
   const { person } = await searchParams;
   const { supabase } = await requireMfaSession();
 
-  const [people, { data: journeys }] = await Promise.all([
+  const [people, { data: journeys }, { data: campaigns }] = await Promise.all([
     personOptions(supabase),
     fetchAll((from, to) =>
       supabase
         .from("journeys")
-        .select("id, person_id, track, stage")
+        .select("id, person_id, track, stage, campaign_id")
         .eq("status", "open")
         .not("person_id", "is", null)
         .order("id")
         .range(from, to)
     ),
+    supabase.from("campaigns").select("id, name").eq("active", true).order("name"),
   ]);
 
   const chosen = people.find((p) => p.id === person) ?? null;
@@ -35,6 +36,7 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
         <LogForm
           people={chosen ? [chosen] : people}
           journeys={open}
+          campaigns={campaigns ?? []}
           initialPersonId={chosen?.id ?? null}
         />
       )}

@@ -131,36 +131,48 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          active: boolean
+          channel: string | null
           created_at: string
           created_by: string | null
           id: string
           import_id: string | null
+          message: string | null
           name: string
           notes: string | null
+          started_on: string | null
           track: string
           updated_at: string
           updated_by: string | null
           workspace_id: string
         }
         Insert: {
+          active?: boolean
+          channel?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           import_id?: string | null
+          message?: string | null
           name: string
           notes?: string | null
+          started_on?: string | null
           track: string
           updated_at?: string
           updated_by?: string | null
           workspace_id?: string
         }
         Update: {
+          active?: boolean
+          channel?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           import_id?: string | null
+          message?: string | null
           name?: string
           notes?: string | null
+          started_on?: string | null
           track?: string
           updated_at?: string
           updated_by?: string | null
@@ -947,6 +959,102 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          closed_on: string | null
+          closed_value: number | null
+          contact_name: string | null
+          contact_person_id: string | null
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          journey_id: string | null
+          member_person_id: string
+          notes: string | null
+          referred_on: string
+          status: string
+          temperature: number | null
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          closed_on?: string | null
+          closed_value?: number | null
+          contact_name?: string | null
+          contact_person_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          id?: string
+          journey_id?: string | null
+          member_person_id: string
+          notes?: string | null
+          referred_on: string
+          status?: string
+          temperature?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          closed_on?: string | null
+          closed_value?: number | null
+          contact_name?: string | null
+          contact_person_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          journey_id?: string | null
+          member_person_id?: string
+          notes?: string | null
+          referred_on?: string
+          status?: string
+          temperature?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_workspace_id_contact_person_id_fkey"
+            columns: ["workspace_id", "contact_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "referrals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journey_overview"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "referrals_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journeys"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "referrals_workspace_id_member_person_id_fkey"
+            columns: ["workspace_id", "member_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           active: boolean
@@ -1142,6 +1250,44 @@ export type Database = {
             foreignKeyName: "workspace_members_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          one_to_one_target: number
+          one_to_one_target_on: boolean
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          one_to_one_target?: number
+          one_to_one_target_on?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          one_to_one_target?: number
+          one_to_one_target_on?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },

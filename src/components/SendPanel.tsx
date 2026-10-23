@@ -25,6 +25,7 @@ export default function SendPanel({
   consentRequestSent,
   templates,
   documents,
+  campaigns,
 }: {
   personId: string;
   firstName: string;
@@ -37,10 +38,12 @@ export default function SendPanel({
   consentRequestSent: boolean;
   templates: SendTemplate[];
   documents: SendDocument[];
+  campaigns: { id: string; name: string }[];
 }) {
   const ctx = { firstName, fullName, business };
   const [templateId, setTemplateId] = useState("");
   const [docIds, setDocIds] = useState<string[]>([]);
+  const [campaignId, setCampaignId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [result, setResult] = useState<{ error?: string; href?: string; text?: string; channel?: string } | null>(null);
@@ -69,6 +72,7 @@ export default function SendPanel({
       const res = await prepareSend({
         person_id: personId,
         template_id: templateId || null,
+        campaign_id: campaignId || null,
         document_ids: docIds,
         channel,
         subject,
@@ -134,6 +138,22 @@ export default function SendPanel({
                 </div>
               ))}
           </fieldset>
+        )}
+
+        {campaigns.length > 0 && (
+          <div>
+            <label className="field-label" htmlFor={`campaign-${personId}`}>
+              Campaign (optional)
+            </label>
+            <select id={`campaign-${personId}`} value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
+              <option value="">Not part of a campaign</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         <div>

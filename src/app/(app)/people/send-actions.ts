@@ -14,6 +14,7 @@ import { signedFileUrl } from "@/lib/supabase/storage";
 const sendSchema = z.object({
   person_id: z.uuid(),
   template_id: z.uuid().nullable(),
+  campaign_id: z.uuid().nullable().default(null),
   document_ids: z.array(z.uuid()).max(10),
   channel: z.enum(["email", "whatsapp"]),
   subject: z.string().trim().max(200),
@@ -116,6 +117,7 @@ export async function prepareSend(input: SendInput): Promise<SendResult> {
       journey_id: journey?.id ?? null,
       organisation_id: person.organisation_id,
       template_id: template?.id ?? null,
+      campaign_id: s.campaign_id,
       created_via: "send",
     })
     .select("id, type, direction, outcome")

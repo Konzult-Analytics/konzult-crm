@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   bySource,
+  campaignNumbers,
   byReferrer,
   fallOut,
   funnel,
@@ -10,6 +11,7 @@ import {
   oneToOnesPerWeek,
   outreach,
   proposalStats,
+  referralStats,
   speed,
   type InsightHistory,
   type InsightJourney,
@@ -169,6 +171,42 @@ describe("insights", () => {
       daysToDecision: 6,
     });
     expect(proposalStats([])).toMatchObject({ sent: 0, acceptRate: null, daysToDecision: null });
+  });
+
+  it("counts a campaign's people, messages, replies and how far its journeys got", () => {
+    const journeys = [
+      { ...JOURNEYS[5], person_id: "p1" }, // f: won client, history through every stage
+      { ...JOURNEYS[2], person_id: "p2" }, // c: lost after contact
+      { ...JOURNEYS[6], person_id: "p3" }, // p: active partner
+    ];
+    const touches = [
+      { ...t({ outcome: "replied" }), person_ids: ["p1"] },
+      { ...t({}), person_ids: ["p2"] },
+      { ...t({ direction: "in", outcome: null }), person_ids: ["p4"] },
+    ];
+    expect(campaignNumbers(journeys, history, touches)).toEqual({
+      people: 4,
+      sent: 2,
+      replies: 1,
+      meetings: 2,
+      proposals: 1,
+      won: 2,
+    });
+  });
+
+  it("sums up BNI referrals both ways, per member, counting value only once won", () => {
+    const s = referralStats([
+      { direction: "given", status: "won", closed_value: 20000, member: "Gerhard Venter" },
+      { direction: "given", status: "open", closed_value: null, member: "Gerhard Venter" },
+      { direction: "received", status: "won", closed_value: 7500, member: "Gerhard Venter" },
+      { direction: "received", status: "lost", closed_value: 9000, member: "Lindiwe Zulu" },
+      { direction: "given", status: "contacted", closed_value: 5000, member: "Lindiwe Zulu" },
+    ]);
+    expect(s).toMatchObject({ given: 3, received: 2, givenValue: 20000, receivedValue: 7500, receivedWon: 1 });
+    expect(s.byMember).toEqual([
+      { name: "Gerhard Venter", given: 2, received: 1, givenValue: 20000, receivedValue: 7500 },
+      { name: "Lindiwe Zulu", given: 1, received: 1, givenValue: 0, receivedValue: 0 },
+    ]);
   });
 
   it("takes medians of odd and even lists", () => {

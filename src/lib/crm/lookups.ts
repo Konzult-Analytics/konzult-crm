@@ -5,13 +5,13 @@ import { personName } from "./people";
 
 type Client = SupabaseClient<Database>;
 
-export type PersonOption = { id: string; name: string; organisation: string | null };
+export type PersonOption = { id: string; name: string; organisation: string | null; isBniMember: boolean };
 
 export async function personOptions(supabase: Client): Promise<PersonOption[]> {
   const { data, error } = await fetchAll((from, to) =>
     supabase
       .from("people")
-      .select("id, first_name, last_name, organisations(name)")
+      .select("id, first_name, last_name, is_bni_member, organisations(name)")
       .order("first_name")
       .order("id")
       .range(from, to)
@@ -21,6 +21,7 @@ export async function personOptions(supabase: Client): Promise<PersonOption[]> {
     id: p.id,
     name: personName(p),
     organisation: p.organisations?.name ?? null,
+    isBniMember: p.is_bni_member,
   }));
 }
 
