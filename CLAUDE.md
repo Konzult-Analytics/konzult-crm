@@ -2,7 +2,7 @@
 
 **Owner:** Zander Kotze
 **Last updated:** 2026-10-23
-**Status:** Phase 1 (0, 1a, 1b, 1c) live; Phase 2a (client care + proposals) in progress on `feature/phase2a-client-care`
+**Status:** Phase 1 and Phase 2a live; Phase 2b (documents, library, tracked links, templates) in progress on `feature/phase2b-documents`
 **Inherits from:** `~/.claude/CLAUDE.md` (global rules)
 
 ---
@@ -90,6 +90,9 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **Fit check:** four answers on `journeys` (`fit_need`, `fit_timing`, `fit_budget`, `fit_decision`: yes / maybe / no) give the generated `fit_score` (0–100; 60+ is a strong fit, `STRONG_FIT`). Insights compares fit with outcome.
 - **Client care** (migration `20261023130000`): a won client journey has `client_status` (onboarding / active / at_risk / paused / ended), set to Onboarding by `private.client_status_set` and cleared if it leaves the Client stage. Ended cancels its open auto care tasks (task status `cancelled`; tasks are never deleted); leaving Ended restarts the monthly ones. `private.add_client_care_tasks` builds the care set for the won-client trigger, the comeback and the backfill. Testimonial and referral outcomes are columns on `journeys`.
 - **Proposals** (`proposals` table): `private.proposal_moves_journey` moves the journey forward when one is sent (→ Proposal) or accepted (→ Client) and copies its value into `value_estimate`. Declining doesn't move anything; the app can also close the journey as lost with a reason. Proposals only attach to client journeys.
+- **Documents** (`documents`, migration `20261023160000`): a stored file or a link. Client documents hang off a person, business or journey; library items (`is_library`, always marketing) hang off nothing. Files live in the private Storage bucket `documents` at `{workspace_id}/{document_id}/v{n}/{file}`; storage rules key off the first folder. Uploads go through server actions, capped at 4 MB because Vercel refuses bodies over ~4.5 MB (bigger material is a link). A new version uploads alongside the old file, so links already sent still open what was sent. Nothing is deleted: documents are archived. `/documents/{id}` opens one for Zander via a five-minute signed URL.
+- **Tracked links** (`asset_sends`): one row per document per person, with a 32-character random token (the secret) and the target fixed at send time (a 12-month signed URL, or the item's own link). The public page `/d/{token}` (allowed before login in `routing.ts`) shows the title and a privacy line; only pressing Open counts (POST `/d/{token}/open`), so link previews and email scanners don't. `public.share_info` / `public.share_open` are security-definer functions open to `anon`, revealing only one link's title, state and target; `share_open` throttles each link to 30 opens an hour. Zander's own opens while logged in aren't counted. Links can be switched off.
+- **Templates and POPIA s69** (`templates`, `src/lib/crm/messages.ts`, unit-tested): each template has a purpose. Marketing (and any message carrying library material) needs consent `granted` or a current client; personal messages are blocked only by a refusal; one consent request may go to someone whose consent is unknown. The server re-checks in `prepareSend`. Marketing messages get the opt-out line. Sending fills `{first_name}`, `{full_name}`, `{business}`, `{links}`, logs an outbound touch (`created_via = 'send'`, `template_id`), and opens Zander's own email app (mailto:) or WhatsApp (wa.me); the CRM sends nothing itself.
 - **Insights** (`/insights`) are computed in TypeScript from journeys, stage history and touches (`src/lib/crm/insights.ts`, unit-tested), per track and period.
 - **The API returns at most 1,000 rows per request** (`[api] max_rows`), silently. Any read that isn't naturally small (lists, matching, Insights) goes through `fetchAll` (`src/lib/supabase/fetch-all.ts`) with `.order(...).order("id").range(from, to)`.
 - `vitest` runs test files one at a time (`fileParallelism: false`). Parallel in-memory Postgres instances exhausted memory on the dev machine.
@@ -102,6 +105,7 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **Sensitive tables:** `people`, `organisations`, `interactions`, `consents`, `documents`
 - **Roles:** owner (all), member (later)
 - **Public endpoints:** booking webhook, website-form webhook, BCC email inbound, document share links. Each must verify a signature or secret, be rate-limited, and validate input with zod
+- **Share links (built in 2b):** the token is the secret and is format-checked before any database call; the throttle is per link (30 opens an hour) inside `share_open`. There is no per-IP limit in the app; volume attacks rely on Vercel's platform protection. Revisit if links are abused
 - **Data retention:** per-person export and delete/anonymise (POPIA)
 
 ---
@@ -129,7 +133,7 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 
 ### Dev sample data
 
-`supabase/seed.sql`, `seed-phase1c.sql` and `seed-phase2a.sql` hold fake people (`@example.test`). Load them with `supabase db push --include-seed` while linked to dev. They are idempotent. Three things stop them reaching production: `[remotes.production.db.seed] enabled = false`, a guard in each file that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guards.
+`supabase/seed.sql`, `seed-phase1c.sql`, `seed-phase2a.sql` and `seed-phase2b.sql` hold fake people (`@example.test`). Load them with `supabase db push --include-seed` while linked to dev. They are idempotent. Three things stop them reaching production: `[remotes.production.db.seed] enabled = false`, a guard in each file that refuses any database without the dev-only `claude-test+dev@konzult.co.za` login, and the linked-project check. `tests/seed.test.ts` proves the guards.
 
 **Trap:** the CLI runs each seed file once. Editing a file that already ran only updates its recorded hash ("Updating seed hash"); the new rows never arrive. Put new samples in a new file with the same guard, and list it in `[db.seed] sql_paths` in `config.toml`.
 
@@ -148,7 +152,9 @@ Both projects live in the same Supabase organisation as the Vertical SaaS / CFO 
 - **2026-10-22:** Phase 1b (imports of BNI visitor sheets, outreach campaigns and contact lists; campaigns; marketing consent) merged as PR #3 and live; migration `20261022170000` is on dev and prod.
 - **2026-10-23:** Phase 1c (automations, fit check, Insights, organisation-page stage controls, paging past the 1,000-row API limit) merged as PR #4 and live; migration `20261023090000` is on dev and prod.
 - **2026-10-23:** Phase 2 decisions (Zander): client sub-statuses Onboarding / Active / At risk / Paused / Ended; templates open in Zander's own email app or WhatsApp (no sending service); tracked document links use `konzult-crm.vercel.app` for now (a `docs.konzult.co.za` address later); Phase 2 ships in two parts: 2a client care + proposals, 2b documents, library, tracked links and templates.
-- **2026-10-23:** Phase 2a on `feature/phase2a-client-care`: client sub-status, care tasks for clients won before 1c (backfill, they start as Active), proposals that move the journey, testimonial and referral outcomes, deal value on board cards, Proposals on Insights. Migrations `20261023130000` (schema) and `20261023130100` (backfill) are on dev and prod (prod applied 2026-10-23 with Zander's go-ahead; the CLI is linked back to dev); `seed-phase2a.sql` loaded on dev only. PR into `main` opened; Zander merges.
+- **2026-10-23:** Phase 2a on `feature/phase2a-client-care`: client sub-status, care tasks for clients won before 1c (backfill, they start as Active), proposals that move the journey, testimonial and referral outcomes, deal value on board cards, Proposals on Insights. Merged as PR #5 and live; migrations `20261023130000` (schema) and `20261023130100` (backfill) are on dev and prod.
+- **2026-10-23:** Phase 2b decisions (Zander): uploads up to 4 MB (bigger material as links; no CSP change); tracked links open a short Konzult page with an Open button and a privacy line; consent needed for marketing only (personal messages allowed unless refused, one consent request); links last 12 months.
+- **2026-10-23:** Phase 2b on `feature/phase2b-documents`: client documents (person, business, journey; proposal files), the marketing library with versions and per-item sent/opened/clients numbers, tracked per-person links with the public page, templates (five defaults, editable on the Library page) and the Send panel with the POPIA s69 gate. Migrations `20261023160000` (schema, Storage bucket and rules) and `20261023160100` (default templates) are on **dev only**; `seed-phase2b.sql` loaded on dev. Prod migrations and merge need Zander's go-ahead.
 - **Known gap:** touches can only be logged for people, not for a business on its own.
 - **Deferred:** inbox sync, WhatsApp Business API, Google Workspace move (Phase 5). Settings screens for editing sources and exit reasons (tables exist; seeded defaults for now).
 
@@ -178,3 +184,4 @@ None granted yet. Ask Zander before acting.
 - **2026-10-22:** initial document
 - **2026-10-23:** Phase 1c patterns (automations, fit check, Insights, `fetchAll`), seed-file trap, status brought up to date
 - **2026-10-23:** Phase 2a patterns (client care, proposals) and the Phase 2 decisions
+- **2026-10-23:** Phase 2b patterns (documents, storage, tracked links, templates and the s69 gate)

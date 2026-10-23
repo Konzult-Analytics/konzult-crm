@@ -43,11 +43,15 @@ describe("redirectFor", () => {
       expect(redirectFor("/icon/192", s)).toBeNull();
       expect(redirectFor("/apple-icon", s)).toBeNull();
       expect(redirectFor("/auth/signout", s)).toBeNull();
+      expect(redirectFor("/d/abcdefghijklmnopqrstuvwxyz012345", s)).toBeNull();
+      expect(redirectFor("/d/abcdefghijklmnopqrstuvwxyz012345/open", s)).toBeNull();
     }
   });
 
   it("doesn't treat look-alike paths as public", () => {
     expect(redirectFor("/iconography", loggedOut)).toBe("/login");
     expect(redirectFor("/login-help", loggedOut)).toBe("/login");
+    expect(redirectFor("/documents/123", loggedOut)).toBe("/login");
+    expect(redirectFor("/dashboard", loggedOut)).toBe("/login");
   });
 });

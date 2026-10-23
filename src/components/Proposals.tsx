@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { addProposal, decideProposal } from "@/app/(app)/proposals/actions";
 import SubmitButton from "@/components/SubmitButton";
 import { addDays, formatDate, saDate } from "@/lib/crm/dates";
+import { ACCEPTED_FILES } from "@/lib/crm/documents";
 import type { ExitReason } from "@/lib/crm/lookups";
 import { rands } from "@/lib/crm/money";
 
@@ -15,6 +16,7 @@ export type ProposalRow = {
   status: string;
   decided_on: string | null;
   notes: string | null;
+  document_id: string | null;
 };
 
 // The default first engagement (spec 11).
@@ -97,6 +99,11 @@ function ProposalItem({
         </span>
       </p>
       {p.notes && <p className="whitespace-pre-line break-words text-ink-soft">{p.notes}</p>}
+      {p.document_id && (
+        <a href={`/documents/${p.document_id}`} target="_blank" rel="noreferrer" className="link">
+          Open the proposal document
+        </a>
+      )}
 
       {p.status === "sent" && !deciding && (
         <div className="flex flex-wrap gap-2">
@@ -227,6 +234,12 @@ function AddProposal({ journeyId }: { journeyId: string }) {
               defaultValue={addDays(today, 4)}
             />
           </div>
+        </div>
+        <div>
+          <label className="field-label" htmlFor={`p-file-${journeyId}`}>
+            The proposal document (optional, up to 4 MB)
+          </label>
+          <input id={`p-file-${journeyId}`} name="file" type="file" accept={ACCEPTED_FILES} />
         </div>
         <div>
           <label className="field-label" htmlFor={`p-notes-${journeyId}`}>

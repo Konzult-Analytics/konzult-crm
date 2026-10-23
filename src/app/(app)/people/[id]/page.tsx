@@ -2,9 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddTaskForm from "@/components/AddTaskForm";
 import ClientCare from "@/components/ClientCare";
+import Documents from "@/components/Documents";
 import FitCheck from "@/components/FitCheck";
 import JourneyControls from "@/components/JourneyControls";
 import Proposals from "@/components/Proposals";
+import SendPanel from "@/components/SendPanel";
+import SentLinks from "@/components/SentLinks";
 import TaskItem from "@/components/TaskItem";
 import Timeline from "@/components/Timeline";
 import { requireMfaSession } from "@/lib/auth/guard";
@@ -55,7 +58,7 @@ export default async function PersonPage({
         .eq("person_id", id),
       supabase
         .from("proposals")
-        .select("id, journey_id, title, value, sent_on, status, decided_on, notes, journeys!inner(person_id)")
+        .select("id, journey_id, title, value, sent_on, status, decided_on, notes, document_id, journeys!inner(person_id)")
         .eq("journeys.person_id", id)
         .order("sent_on"),
       supabase
@@ -72,9 +75,34 @@ export default async function PersonPage({
       personOptions(supabase),
     ]);
 
+  const [{ data: templates }, { data: library }, { data: documents }, { data: sends }, { data: asked }] = await Promise.all([
+    supabase.from("templates").select("id, name, purpose, subject, body").eq("active", true).order("sort_order"),
+    supabase.from("documents").select("id, title, kind, is_library").eq("is_library", true).eq("archived", false).order("title"),
+    supabase
+      .from("documents")
+      .select("id, title, kind, is_library, file_name, size_bytes, url, version, created_at")
+      .eq("person_id", id)
+      .eq("archived", false)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("asset_sends")
+      .select("id, channel, sent_at, open_count, first_opened_at, last_opened_at, revoked_at, expires_at, share_token, documents(title)")
+      .eq("person_id", id)
+      .order("sent_at", { ascending: false }),
+    supabase
+      .from("interactions")
+      .select("id, templates!inner(purpose), interaction_people!inner(person_id)")
+      .eq("interaction_people.person_id", id)
+      .eq("templates.purpose", "consent_request")
+      .limit(1),
+  ]);
+
   const name = personName(person);
   const wa = whatsappNumber(person.phone);
   const today = saDate();
+  const isClient = (journeys ?? []).some(
+    (j) => j.track === "client" && j.stage === "client" && j.status === "open" && j.client_status !== "ended"
+  );
   const freeTracks = TRACKS.filter(
     (t) => !(journeys ?? []).some((j) => j.track === t && j.status !== "lost")
   );
@@ -251,6 +279,39 @@ export default async function PersonPage({
             </div>
           </details>
         )}
+      </section>
+
+      <SendPanel
+        personId={person.id}
+        firstName={person.first_name}
+        fullName={name}
+        business={person.organisations?.name ?? null}
+        hasEmail={!!person.email}
+        hasWhatsApp={!!wa}
+        consent={person.marketing_consent}
+        isClient={isClient}
+        consentRequestSent={(asked ?? []).length > 0}
+        templates={templates ?? []}
+        documents={[...(library ?? []), ...(documents ?? [])]}
+      />
+
+      {(sends ?? []).length > 0 && (
+        <section className="space-y-3">
+          <h2 className="section-title">Links sent</h2>
+          <SentLinks sends={(sends ?? []).map((s) => ({ ...s, title: s.documents?.title ?? "Document" }))} />
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="section-title">Documents</h2>
+        <Documents
+          documents={documents ?? []}
+          personId={person.id}
+          journeys={(journeys ?? []).map((j) => ({
+            id: j.id!,
+            label: `${isTrack(j.track) ? TRACK_LABEL[j.track] : j.track} journey · ${stageLabel(j.track ?? "", j.stage ?? "")}`,
+          }))}
+        />
       </section>
 
       <section className="space-y-3">

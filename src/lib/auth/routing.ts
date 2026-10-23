@@ -6,8 +6,9 @@ export type AuthState = {
   nextLevel: string | null;
 };
 
-// Reachable before login: the phone install manifest and its icons.
-const PUBLIC_PREFIXES = ["/manifest.webmanifest", "/icon", "/apple-icon", "/auth/signout"];
+// Reachable before login: the phone install manifest and its icons, and the
+// tracked document links sent to contacts (/d/{token}).
+const PUBLIC_PREFIXES = ["/manifest.webmanifest", "/icon", "/apple-icon", "/auth/signout", "/d"];
 
 const HOME = "/";
 const LOGIN = "/login";
