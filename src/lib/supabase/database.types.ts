@@ -129,6 +129,121 @@ export type Database = {
           },
         ]
       }
+      bookings: {
+        Row: {
+          attendee_email: string | null
+          attendee_name: string | null
+          attendee_phone: string | null
+          business: string | null
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          event_slug: string | null
+          external_uid: string
+          id: string
+          journey_id: string | null
+          notes: string | null
+          person_id: string | null
+          prep_task_id: string | null
+          starts_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          attendee_phone?: string | null
+          business?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          event_slug?: string | null
+          external_uid: string
+          id?: string
+          journey_id?: string | null
+          notes?: string | null
+          person_id?: string | null
+          prep_task_id?: string | null
+          starts_at: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          attendee_phone?: string | null
+          business?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          event_slug?: string | null
+          external_uid?: string
+          id?: string
+          journey_id?: string | null
+          notes?: string | null
+          person_id?: string | null
+          prep_task_id?: string | null
+          starts_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_prep_task_id_fkey"
+            columns: ["prep_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_workspace_id_connection_id_fkey"
+            columns: ["workspace_id", "connection_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_connections"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "bookings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journey_overview"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "bookings_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journeys"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "bookings_workspace_id_person_id_fkey"
+            columns: ["workspace_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           active: boolean
@@ -391,6 +506,150 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_connections: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          key_hint: string
+          kind: string
+          last_event_at: string | null
+          last_event_status: string | null
+          revoked_at: string | null
+          updated_at: string
+          updated_by: string | null
+          window_events: number
+          window_started_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          key_hint: string
+          kind: string
+          last_event_at?: string | null
+          last_event_status?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          window_events?: number
+          window_started_at?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          key_hint?: string
+          kind?: string
+          last_event_at?: string | null
+          last_event_status?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          window_events?: number
+          window_started_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_connections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_leads: {
+        Row: {
+          business: string | null
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          decided_at: string | null
+          email: string | null
+          external_id: string
+          id: string
+          marketing_consent: boolean
+          message: string | null
+          name: string | null
+          person_id: string | null
+          phone: string | null
+          received_at: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          business?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          email?: string | null
+          external_id: string
+          id?: string
+          marketing_consent?: boolean
+          message?: string | null
+          name?: string | null
+          person_id?: string | null
+          phone?: string | null
+          received_at?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          business?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          email?: string | null
+          external_id?: string
+          id?: string
+          marketing_consent?: boolean
+          message?: string | null
+          name?: string | null
+          person_id?: string | null
+          phone?: string | null
+          received_at?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_leads_workspace_id_connection_id_fkey"
+            columns: ["workspace_id", "connection_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_connections"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_workspace_id_person_id_fkey"
+            columns: ["workspace_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -1361,6 +1620,11 @@ export type Database = {
     }
     Functions: {
       import_contacts: { Args: { p_import: Json; p_rows: Json }; Returns: Json }
+      inbound_cal: { Args: { p_event: Json; p_key: string }; Returns: string }
+      inbound_website: {
+        Args: { p_key: string; p_lead: Json }
+        Returns: string
+      }
       share_info: {
         Args: { p_token: string }
         Returns: {

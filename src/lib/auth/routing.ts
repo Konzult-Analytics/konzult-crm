@@ -6,9 +6,10 @@ export type AuthState = {
   nextLevel: string | null;
 };
 
-// Reachable before login: the phone install manifest and its icons, and the
-// tracked document links sent to contacts (/d/{token}).
-const PUBLIC_PREFIXES = ["/manifest.webmanifest", "/icon", "/apple-icon", "/auth/signout", "/d"];
+// Reachable before login: the phone install manifest and its icons, the
+// tracked document links sent to contacts (/d/{token}), and the signed doors
+// for Cal.com and the website (/api/inbound/...).
+const PUBLIC_PREFIXES = ["/manifest.webmanifest", "/icon", "/apple-icon", "/auth/signout", "/d", "/api/inbound"];
 
 const HOME = "/";
 const LOGIN = "/login";

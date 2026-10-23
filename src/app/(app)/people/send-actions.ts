@@ -2,13 +2,13 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { z } from "zod";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { LINK_LIFETIME_DAYS } from "@/lib/crm/documents";
 import { linkMessage, mergeFields, sendBlock, sendPurpose, type MessageLink, type Purpose } from "@/lib/crm/messages";
 import { personName, whatsappNumber } from "@/lib/crm/people";
 import { advanceFor, isTrack } from "@/lib/crm/stages";
+import { siteOrigin } from "@/lib/site";
 import { signedFileUrl } from "@/lib/supabase/storage";
 
 const sendSchema = z.object({
@@ -23,13 +23,6 @@ const sendSchema = z.object({
 
 export type SendInput = z.input<typeof sendSchema>;
 export type SendResult = { error: string } | { href: string; text: string };
-
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
 
 /**
  * Checks POPIA s69 again on the server, creates one tracked link per document,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Connections from "@/components/Connections";
 import { ReferralForm, ReferralList } from "@/components/Referrals";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { loadReferrals, oneToOneTarget, oneToOnesThisWeek } from "@/lib/crm/bni";
@@ -13,13 +14,14 @@ import { CampaignForm, TargetForm } from "./CampaignForms";
 const TABS = [
   { key: "campaigns", label: "Campaigns" },
   { key: "bni", label: "BNI" },
+  { key: "connections", label: "Connections" },
 ] as const;
 
 type Supabase = Awaited<ReturnType<typeof requireMfaSession>>["supabase"];
 
 export default async function CampaignsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab: requested } = await searchParams;
-  const tab = requested === "bni" ? "bni" : "campaigns";
+  const tab = TABS.find((t) => t.key === requested)?.key ?? "campaigns";
   const { supabase } = await requireMfaSession();
 
   return (
@@ -34,7 +36,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
       </div>
-      {tab === "campaigns" ? <Campaigns supabase={supabase} /> : <Bni supabase={supabase} />}
+      {tab === "campaigns" && <Campaigns supabase={supabase} />}
+      {tab === "bni" && <Bni supabase={supabase} />}
+      {tab === "connections" && <InboundConnections supabase={supabase} />}
     </div>
   );
 }
@@ -224,6 +228,22 @@ async function Bni({ supabase }: { supabase: Supabase }) {
         </details>
         <ReferralList referrals={referrals} />
       </section>
+    </>
+  );
+}
+
+async function InboundConnections({ supabase }: { supabase: Supabase }) {
+  const { data: connections } = await supabase
+    .from("inbound_connections")
+    .select("id, kind, key_hint, created_at, revoked_at, last_event_at, last_event_status")
+    .order("created_at", { ascending: false });
+  return (
+    <>
+      <p className="text-sm text-ink-soft">
+        Bookings and website enquiries come in through these. Each has its own secret key; the CRM keeps only a fingerprint
+        of it, and checks every message&apos;s signature. Switch a key off at any time.
+      </p>
+      <Connections connections={connections ?? []} />
     </>
   );
 }
