@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { personName } from "./people";
 
 type Client = SupabaseClient<Database>;
@@ -7,10 +8,14 @@ type Client = SupabaseClient<Database>;
 export type PersonOption = { id: string; name: string; organisation: string | null };
 
 export async function personOptions(supabase: Client): Promise<PersonOption[]> {
-  const { data, error } = await supabase
-    .from("people")
-    .select("id, first_name, last_name, organisations(name)")
-    .order("first_name");
+  const { data, error } = await fetchAll((from, to) =>
+    supabase
+      .from("people")
+      .select("id, first_name, last_name, organisations(name)")
+      .order("first_name")
+      .order("id")
+      .range(from, to)
+  );
   if (error) console.error("person options failed", error);
   return (data ?? []).map((p) => ({
     id: p.id,
@@ -42,7 +47,9 @@ export async function exitReasonOptions(supabase: Client) {
 export type ExitReason = Awaited<ReturnType<typeof exitReasonOptions>>[number];
 
 export async function organisationNames(supabase: Client) {
-  const { data, error } = await supabase.from("organisations").select("id, name").order("name");
+  const { data, error } = await fetchAll((from, to) =>
+    supabase.from("organisations").select("id, name").order("name").order("id").range(from, to)
+  );
   if (error) console.error("organisation names failed", error);
-  return data ?? [];
+  return data;
 }

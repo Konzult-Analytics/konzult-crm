@@ -3,20 +3,29 @@ import { requireMfaSession } from "@/lib/auth/guard";
 import { daysAgo } from "@/lib/crm/dates";
 import { personName } from "@/lib/crm/people";
 import { stageLabel, TRACK_LABEL, isTrack } from "@/lib/crm/stages";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const { supabase } = await requireMfaSession();
 
   const [{ data: people, error }, { data: journeys }] = await Promise.all([
-    supabase
-      .from("people")
-      .select("id, first_name, last_name, email, phone, organisations(name)")
-      .order("first_name"),
-    supabase
-      .from("journey_overview")
-      .select("id, person_id, track, stage, status, last_touch_at")
-      .not("person_id", "is", null),
+    fetchAll((from, to) =>
+      supabase
+        .from("people")
+        .select("id, first_name, last_name, email, phone, organisations(name)")
+        .order("first_name")
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from("journey_overview")
+        .select("id, person_id, track, stage, status, last_touch_at")
+        .not("person_id", "is", null)
+        .order("id")
+        .range(from, to)
+    ),
   ]);
   if (error) console.error("people list failed", error);
 
