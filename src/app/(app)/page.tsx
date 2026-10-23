@@ -2,7 +2,7 @@ import Link from "next/link";
 import TaskItem from "@/components/TaskItem";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { oneToOneTarget, oneToOnesThisWeek } from "@/lib/crm/bni";
-import { addDays, daysAgo, formatDate, saDate } from "@/lib/crm/dates";
+import { addDays, daysAgo, formatDate, formatDateTime, saDate } from "@/lib/crm/dates";
 import { personName } from "@/lib/crm/people";
 import { stageLabel } from "@/lib/crm/stages";
 import { fetchAll } from "@/lib/supabase/fetch-all";
@@ -19,6 +19,7 @@ import {
   splitTasks,
   unansweredStreak,
 } from "@/lib/crm/today";
+import { addLead, discardLead } from "./inbound/actions";
 import { closeNeverResponded } from "./pipeline/actions";
 
 const AWAITING_SHOWN = 8;
@@ -47,7 +48,22 @@ function stageText(j: { track: string | null; stage: string | null }) {
 export default async function TodayPage() {
   const { supabase } = await requireMfaSession();
   const today = saDate();
-  const [target, oneToOnes] = await Promise.all([oneToOneTarget(supabase), oneToOnesThisWeek(supabase, today)]);
+  const [target, oneToOnes, { data: meetings }, { data: enquiries }] = await Promise.all([
+    oneToOneTarget(supabase),
+    oneToOnesThisWeek(supabase, today),
+    supabase
+      .from("bookings")
+      .select("id, title, starts_at, person_id, people(first_name, last_name)")
+      .eq("status", "booked")
+      .gte("starts_at", `${today}T00:00:00+02:00`)
+      .lt("starts_at", `${addDays(today, 8)}T00:00:00+02:00`)
+      .order("starts_at"),
+    supabase
+      .from("inbound_leads")
+      .select("id, name, email, phone, business, message, marketing_consent, received_at")
+      .eq("status", "new")
+      .order("received_at"),
+  ]);
 
   const [{ data: tasks }, { data: journeys }, { data: people }, { data: touches }] = await Promise.all([
     supabase
@@ -113,7 +129,9 @@ export default async function TodayPage() {
   const birthdays = birthdaysSoon(people ?? [], today);
 
   const nothing =
-    due.length +
+    (meetings ?? []).length +
+      (enquiries ?? []).length +
+      due.length +
       upcoming.length +
       unanswered.length +
       cold.length +
@@ -150,6 +168,65 @@ export default async function TodayPage() {
             <Link href="/log" className="link">log a touch</Link>.
           </p>
         </div>
+      )}
+
+      {(enquiries ?? []).length > 0 && (
+        <Section title="New enquiries from the website" count={(enquiries ?? []).length}>
+          <ul className="card divide-y divide-line p-0">
+            {(enquiries ?? []).map((e) => (
+              <li key={e.id} className="space-y-2 px-4 py-3 text-sm">
+                <p>
+                  <span className="font-medium">{e.name ?? e.email ?? e.phone}</span>
+                  {e.business && <span className="text-ink-soft"> · {e.business}</span>}
+                  <span className="block text-xs text-ink-soft">
+                    {[e.email, e.phone].filter(Boolean).join(" · ")} · {formatDateTime(e.received_at)}
+                    {e.marketing_consent && " · agreed to marketing"}
+                  </span>
+                </p>
+                {e.message && <p className="line-clamp-3 whitespace-pre-line break-words">{e.message}</p>}
+                <div className="flex gap-2">
+                  <form action={addLead}>
+                    <input type="hidden" name="lead_id" value={e.id} />
+                    <button type="submit" className="btn btn-accent btn-sm">
+                      Add to CRM
+                    </button>
+                  </form>
+                  <form action={discardLead}>
+                    <input type="hidden" name="lead_id" value={e.id} />
+                    <button type="submit" className="btn btn-ghost btn-sm">
+                      Not a lead
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {(meetings ?? []).length > 0 && (
+        <Section title="Meetings booked (next 7 days)" count={(meetings ?? []).length}>
+          <ul className="card divide-y divide-line p-0">
+            {(meetings ?? []).map((m) => (
+              <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm">
+                <span>
+                  {m.person_id ? (
+                    <Link href={`/people/${m.person_id}`} className="font-medium hover:underline">
+                      {m.people ? personName(m.people) : "Someone"}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">Someone</span>
+                  )}
+                  <span className="text-ink-soft"> · {m.title}</span>
+                </span>
+                <span className={saDate(new Date(m.starts_at)) === today ? "font-medium text-accent" : "text-ink-soft"}>
+                  {saDate(new Date(m.starts_at)) === today ? "Today, " : ""}
+                  {formatDateTime(m.starts_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
       )}
 
       {due.length > 0 && (

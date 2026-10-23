@@ -5,7 +5,7 @@ import { migratedDb } from "./support/pgdb";
 
 const seedFile = (name: string) => readFileSync(path.join(__dirname, "../supabase", name), "utf-8");
 // The order supabase/config.toml loads them in.
-const SEEDS = ["seed.sql", "seed-phase1c.sql", "seed-phase2a.sql", "seed-phase2b.sql", "seed-phase3a.sql"].map(seedFile);
+const SEEDS = ["seed.sql", "seed-phase1c.sql", "seed-phase2a.sql", "seed-phase2b.sql", "seed-phase3a.sql", "seed-phase3b.sql"].map(seedFile);
 const OWNER = { id: "00000000-0000-4000-8000-000000000001", email: "zander.kotze@konzult.co.za" };
 const DEV_TESTER = { id: "00000000-0000-4000-8000-000000000003", email: "claude-test+dev@konzult.co.za" };
 
@@ -29,10 +29,13 @@ describe("dev seed", { timeout: 30_000 }, () => {
               (select count(*)::int from public.templates) as templates,
               (select count(*)::int from public.referrals) as referrals,
               (select count(*)::int from public.campaigns) as campaigns,
-              (select one_to_one_target from public.workspace_settings) as target`
+              (select one_to_one_target from public.workspace_settings) as target,
+              (select count(*)::int from public.bookings) as bookings,
+              (select count(*)::int from public.inbound_leads where status = 'new') as enquiries,
+              (select count(*)::int from public.inbound_connections) as connections`
     );
-    // Tasks: 4 written in the seed, plus Sarah Nel's 3 client-care tasks from the trigger.
-    expect(counts.rows[0]).toEqual({ people: 15, journeys: 15, closed: 3, tasks: 7, members: 2, proposals: 3, sarah: "active", documents: 3, sends: 2, templates: 5, referrals: 3, campaigns: 2, target: 5 });
+    // Tasks: 4 written in the seed, Sarah Nel's 3 client-care tasks from the trigger, and 1 booking prep task.
+    expect(counts.rows[0]).toEqual({ people: 15, journeys: 15, closed: 3, tasks: 8, members: 2, proposals: 3, sarah: "active", documents: 3, sends: 2, templates: 5, referrals: 3, campaigns: 2, target: 5, bookings: 2, enquiries: 2, connections: 0 });
   });
 
   it("refuses to run without the dev-only test login (production)", async () => {

@@ -45,6 +45,8 @@ describe("redirectFor", () => {
       expect(redirectFor("/auth/signout", s)).toBeNull();
       expect(redirectFor("/d/abcdefghijklmnopqrstuvwxyz012345", s)).toBeNull();
       expect(redirectFor("/d/abcdefghijklmnopqrstuvwxyz012345/open", s)).toBeNull();
+      expect(redirectFor("/api/inbound/cal/key", s)).toBeNull();
+      expect(redirectFor("/api/inbound/website/key", s)).toBeNull();
     }
   });
 
@@ -53,5 +55,7 @@ describe("redirectFor", () => {
     expect(redirectFor("/login-help", loggedOut)).toBe("/login");
     expect(redirectFor("/documents/123", loggedOut)).toBe("/login");
     expect(redirectFor("/dashboard", loggedOut)).toBe("/login");
+    expect(redirectFor("/api/inboundx", loggedOut)).toBe("/login");
+    expect(redirectFor("/api/other", loggedOut)).toBe("/login");
   });
 });
