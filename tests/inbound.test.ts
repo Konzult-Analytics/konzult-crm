@@ -117,6 +117,40 @@ describe("reading website enquiries", () => {
     expect(readWebsiteLead({ email: "a@b.test" }, "s").marketing_consent).toBe(false);
   });
 
+  it("reads the Framer Contact Us form, keeping answers the CRM has no field for", () => {
+    const framer = {
+      Name: "Fiona Framer",
+      Email: "fiona@example.test",
+      "Contact Number": "082 555 0303",
+      "Contact Time": "14:00",
+      "Financial advisor": "Yes",
+      // Framer's own hidden spam traps, sent empty.
+      website: "",
+      company: "",
+      message: "",
+      subject: "",
+      notes: "",
+    };
+    expect(readWebsiteLead(framer, "sub-3")).toEqual({
+      event: "lead",
+      id: "sub-3",
+      name: "Fiona Framer",
+      email: "fiona@example.test",
+      phone: "082 555 0303",
+      business: null,
+      message: "Contact Time: 14:00\nFinancial advisor: Yes",
+      marketing_consent: false,
+    });
+  });
+
+  it("puts other answers after the visitor's own message, and never lets a trap field through", () => {
+    const lead = readWebsiteLead(
+      { email: "a@b.test", message: "Cash is tight.", "Best  day": ["Mon", "Tue"], Newsletter: true, subject: "Buy now", Empty: " " },
+      "s"
+    );
+    expect(lead.message).toBe("Cash is tight.\n\nBest day: Mon, Tue\nNewsletter: Yes");
+  });
+
   it("treats a filled-in hidden field as spam, and drops enquiries with no way to reply", () => {
     expect(readWebsiteLead({ email: "a@b.test", website: "http://spam.test" }, "s")).toEqual({ event: "spam" });
     expect(readWebsiteLead({ name: "No Contact", message: "hi" }, "s")).toEqual({ event: "ignored" });
