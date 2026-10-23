@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ClientCare from "@/components/ClientCare";
 import JourneyControls from "@/components/JourneyControls";
+import Proposals from "@/components/Proposals";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { exitReasonOptions } from "@/lib/crm/lookups";
 import { daysAgo, saDate } from "@/lib/crm/dates";
@@ -21,13 +23,25 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
     .maybeSingle();
   if (!org) notFound();
 
-  const [{ data: people }, { data: journeys }, reasons] = await Promise.all([
+  const [{ data: people }, { data: journeys }, { data: details }, { data: proposals }, reasons] = await Promise.all([
     supabase.from("people").select("id, first_name, last_name, role_title").eq("organisation_id", id).order("first_name"),
     supabase
       .from("journey_overview")
-      .select("id, person_id, display_name, track, stage, status, last_touch_at, exit_reason, exit_side, parked_until")
+      .select("id, person_id, display_name, track, stage, status, last_touch_at, exit_reason, exit_side, parked_until, client_status")
       .eq("organisation_id", id)
       .order("opened_at"),
+    // Business-only journeys are managed here, so they need their care and proposal details.
+    supabase
+      .from("journeys")
+      .select("id, testimonial_status, testimonial_quote, referral_status")
+      .eq("organisation_id", id)
+      .is("person_id", null),
+    supabase
+      .from("proposals")
+      .select("id, journey_id, title, value, sent_on, status, decided_on, notes, journeys!inner(organisation_id, person_id)")
+      .eq("journeys.organisation_id", id)
+      .is("journeys.person_id", null)
+      .order("sent_on"),
     exitReasonOptions(supabase),
   ]);
 
@@ -99,6 +113,26 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
                       exit_side: j.exit_side,
                       parked_until: j.parked_until,
                     }}
+                    reasons={reasons}
+                  />
+                )}
+                {!j.person_id && j.track === "client" && j.stage === "client" && (
+                  <ClientCare
+                    journeyId={j.id!}
+                    values={{
+                      client_status: j.client_status,
+                      testimonial_status: null,
+                      testimonial_quote: null,
+                      referral_status: null,
+                      ...(details ?? []).find((d) => d.id === j.id),
+                    }}
+                  />
+                )}
+                {!j.person_id && j.track === "client" && (
+                  <Proposals
+                    journeyId={j.id!}
+                    journeyOpen={j.status === "open"}
+                    proposals={(proposals ?? []).filter((p) => p.journey_id === j.id)}
                     reasons={reasons}
                   />
                 )}

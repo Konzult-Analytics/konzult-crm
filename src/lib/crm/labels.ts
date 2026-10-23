@@ -56,6 +56,27 @@ export const TASK_KINDS = [
   { key: "other", label: "Other" },
 ] as const;
 
+// These three mirror 20261023130000_client_care_proposals.sql.
+export const CLIENT_STATUSES = [
+  { key: "onboarding", label: "Onboarding" },
+  { key: "active", label: "Active" },
+  { key: "at_risk", label: "At risk" },
+  { key: "paused", label: "Paused" },
+  { key: "ended", label: "Ended" },
+] as const;
+
+export const TESTIMONIAL_STATUSES = [
+  { key: "asked", label: "Asked" },
+  { key: "received", label: "Received" },
+  { key: "declined", label: "Declined" },
+] as const;
+
+export const REFERRAL_STATUSES = [
+  { key: "asked", label: "Asked" },
+  { key: "given", label: "Gave one" },
+  { key: "declined", label: "Declined" },
+] as const;
+
 type Option = { readonly key: string; readonly label: string };
 
 export function labelOf(options: readonly Option[], key: string | null | undefined): string {

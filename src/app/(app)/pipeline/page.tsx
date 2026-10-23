@@ -17,7 +17,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       supabase
         .from("journey_overview")
         .select(
-          "id, person_id, organisation_id, display_name, organisation_name, stage, status, source, last_touch_at, stage_changed_at, next_task_on, exit_reason, exit_side, exit_stage, parked_until, closed_at, fit_score"
+          "id, person_id, organisation_id, display_name, organisation_name, stage, status, source, last_touch_at, stage_changed_at, next_task_on, exit_reason, exit_side, exit_stage, parked_until, closed_at, fit_score, value_estimate, client_status"
         )
         .eq("track", track)
         .order("stage_changed_at")
@@ -43,6 +43,8 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       stageChangedAt: j.stage_changed_at,
       nextTaskOn: j.next_task_on,
       fitScore: j.fit_score,
+      value: j.value_estimate,
+      clientStatus: j.client_status,
     }));
   const closed = all
     .filter((j) => j.status !== "open")

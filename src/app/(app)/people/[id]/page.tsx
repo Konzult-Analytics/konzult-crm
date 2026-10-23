@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddTaskForm from "@/components/AddTaskForm";
+import ClientCare from "@/components/ClientCare";
 import FitCheck from "@/components/FitCheck";
 import JourneyControls from "@/components/JourneyControls";
+import Proposals from "@/components/Proposals";
 import TaskItem from "@/components/TaskItem";
 import Timeline from "@/components/Timeline";
 import { requireMfaSession } from "@/lib/auth/guard";
@@ -36,31 +38,39 @@ export default async function PersonPage({
     .maybeSingle();
   if (!person) notFound();
 
-  const [{ data: journeys }, { data: fits }, { data: touches }, { data: tasks }, reasons, sources, people] = await Promise.all([
-    supabase
-      .from("journey_overview")
-      .select(
-        "id, track, stage, status, source, referred_by, campaign, exit_reason, exit_side, parked_until, opened_at, last_touch_at, fit_score"
-      )
-      .eq("person_id", id)
-      .order("opened_at"),
-    supabase
-      .from("journeys")
-      .select("id, fit_need, fit_timing, fit_budget, fit_decision, chance_pct, value_estimate")
-      .eq("person_id", id),
-    supabase
-      .from("interactions")
-      .select(
-        "id, type, direction, occurred_at, summary, outcome, meeting_purpose, meeting_setting, next_step, interaction_people!inner(person_id)"
-      )
-      .eq("interaction_people.person_id", id)
-      .order("occurred_at", { ascending: false })
-      .limit(100),
-    supabase.from("tasks").select("id, title, due_on").eq("person_id", id).eq("status", "open").order("due_on"),
-    exitReasonOptions(supabase),
-    sourceOptions(supabase),
-    personOptions(supabase),
-  ]);
+  const [{ data: journeys }, { data: details }, { data: proposals }, { data: touches }, { data: tasks }, reasons, sources, people] =
+    await Promise.all([
+      supabase
+        .from("journey_overview")
+        .select(
+          "id, track, stage, status, source, referred_by, campaign, exit_reason, exit_side, parked_until, opened_at, last_touch_at, fit_score, client_status"
+        )
+        .eq("person_id", id)
+        .order("opened_at"),
+      supabase
+        .from("journeys")
+        .select(
+          "id, fit_need, fit_timing, fit_budget, fit_decision, chance_pct, value_estimate, testimonial_status, testimonial_quote, referral_status"
+        )
+        .eq("person_id", id),
+      supabase
+        .from("proposals")
+        .select("id, journey_id, title, value, sent_on, status, decided_on, notes, journeys!inner(person_id)")
+        .eq("journeys.person_id", id)
+        .order("sent_on"),
+      supabase
+        .from("interactions")
+        .select(
+          "id, type, direction, occurred_at, summary, outcome, meeting_purpose, meeting_setting, next_step, interaction_people!inner(person_id)"
+        )
+        .eq("interaction_people.person_id", id)
+        .order("occurred_at", { ascending: false })
+        .limit(100),
+      supabase.from("tasks").select("id, title, due_on").eq("person_id", id).eq("status", "open").order("due_on"),
+      exitReasonOptions(supabase),
+      sourceOptions(supabase),
+      personOptions(supabase),
+    ]);
 
   const name = personName(person);
   const wa = whatsappNumber(person.phone);
@@ -162,56 +172,77 @@ export default async function PersonPage({
 
       <section className="space-y-3">
         <h2 className="section-title">Journeys</h2>
-        {(journeys ?? []).map((j) => (
-          <div key={j.id} className="card space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="badge badge-accent">{isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}</span>
-              <span className="font-medium">{stageLabel(j.track ?? "", j.stage ?? "")}</span>
-              <span className="text-sm text-ink-soft">
-                since {formatDate(j.opened_at)} ·{" "}
-                {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
-              </span>
-            </div>
-            {(j.source || j.referred_by || j.campaign) && (
-              <p className="text-sm text-ink-soft">
-                {[
-                  j.source && `Source: ${j.source}`,
-                  j.referred_by && `Introduced by ${j.referred_by}`,
-                  j.campaign && `Campaign: ${j.campaign}`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            )}
-            <JourneyControls
-              journey={{
-                id: j.id!,
-                track: j.track ?? "",
-                stage: j.stage ?? "",
-                status: j.status ?? "open",
-                exit_reason: j.exit_reason,
-                exit_side: j.exit_side,
-                parked_until: j.parked_until,
-              }}
-              reasons={reasons}
-            />
-            {j.track === "client" && (
-              <FitCheck
-                journeyId={j.id!}
-                values={{
-                  fit_need: null,
-                  fit_timing: null,
-                  fit_budget: null,
-                  fit_decision: null,
-                  chance_pct: null,
-                  value_estimate: null,
-                  ...(fits ?? []).find((f) => f.id === j.id),
-                  fit_score: j.fit_score,
+        {(journeys ?? []).map((j) => {
+          const detail = (details ?? []).find((d) => d.id === j.id);
+          return (
+            <div key={j.id} className="card space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="badge badge-accent">{isTrack(j.track) ? TRACK_LABEL[j.track] : j.track}</span>
+                <span className="font-medium">{stageLabel(j.track ?? "", j.stage ?? "")}</span>
+                <span className="text-sm text-ink-soft">
+                  since {formatDate(j.opened_at)} ·{" "}
+                  {j.last_touch_at ? `last touch ${daysAgo(j.last_touch_at, today)}` : "no touches yet"}
+                </span>
+              </div>
+              {(j.source || j.referred_by || j.campaign) && (
+                <p className="text-sm text-ink-soft">
+                  {[
+                    j.source && `Source: ${j.source}`,
+                    j.referred_by && `Introduced by ${j.referred_by}`,
+                    j.campaign && `Campaign: ${j.campaign}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+              <JourneyControls
+                journey={{
+                  id: j.id!,
+                  track: j.track ?? "",
+                  stage: j.stage ?? "",
+                  status: j.status ?? "open",
+                  exit_reason: j.exit_reason,
+                  exit_side: j.exit_side,
+                  parked_until: j.parked_until,
                 }}
+                reasons={reasons}
               />
-            )}
-          </div>
-        ))}
+              {j.track === "client" && j.stage === "client" && (
+                <ClientCare
+                  journeyId={j.id!}
+                  values={{
+                    client_status: j.client_status,
+                    testimonial_status: detail?.testimonial_status ?? null,
+                    testimonial_quote: detail?.testimonial_quote ?? null,
+                    referral_status: detail?.referral_status ?? null,
+                  }}
+                />
+              )}
+              {j.track === "client" && (
+                <Proposals
+                  journeyId={j.id!}
+                  journeyOpen={j.status === "open"}
+                  proposals={(proposals ?? []).filter((p) => p.journey_id === j.id)}
+                  reasons={reasons}
+                />
+              )}
+              {j.track === "client" && (
+                <FitCheck
+                  journeyId={j.id!}
+                  values={{
+                    fit_need: detail?.fit_need ?? null,
+                    fit_timing: detail?.fit_timing ?? null,
+                    fit_budget: detail?.fit_budget ?? null,
+                    fit_decision: detail?.fit_decision ?? null,
+                    chance_pct: detail?.chance_pct ?? null,
+                    value_estimate: detail?.value_estimate ?? null,
+                    fit_score: j.fit_score,
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
         {freeTracks.length > 0 && (
           <details className="card" open={(journeys ?? []).length === 0}>
             <summary className="cursor-pointer text-sm font-medium">Start a journey</summary>

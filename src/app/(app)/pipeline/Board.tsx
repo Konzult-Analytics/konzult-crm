@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import ExitForm, { type ExitStatus } from "@/components/ExitForm";
 import { daysAgo, daysBetween, dueLabel, saDate } from "@/lib/crm/dates";
 import { STRONG_FIT } from "@/lib/crm/insights";
+import { CLIENT_STATUSES, labelOf } from "@/lib/crm/labels";
 import type { ExitReason } from "@/lib/crm/lookups";
+import { rands } from "@/lib/crm/money";
 import { moveStage } from "./actions";
 
 export type BoardCard = {
@@ -20,6 +22,8 @@ export type BoardCard = {
   stageChangedAt: string | null;
   nextTaskOn: string | null;
   fitScore: number | null;
+  value: number | null;
+  clientStatus: string | null;
 };
 
 type Column = { key: string; label: string };
@@ -127,11 +131,19 @@ export default function Board({
                         {card.stageChangedAt && `${daysBetween(saDate(new Date(card.stageChangedAt)), today)}d in stage · `}
                         {card.lastTouchAt ? `touched ${daysAgo(card.lastTouchAt, today)}` : "no touches yet"}
                       </p>
-                      {card.fitScore !== null && (
-                        <p className="text-xs">
-                          <span className={`badge ${card.fitScore >= STRONG_FIT ? "badge-accent" : ""}`}>
-                            Fit {card.fitScore}
-                          </span>
+                      {(card.fitScore !== null || card.value !== null || card.clientStatus) && (
+                        <p className="flex flex-wrap items-center gap-1.5 text-xs">
+                          {card.clientStatus && (
+                            <span className={`badge ${card.clientStatus === "at_risk" ? "badge-danger" : ""}`}>
+                              {labelOf(CLIENT_STATUSES, card.clientStatus)}
+                            </span>
+                          )}
+                          {card.fitScore !== null && (
+                            <span className={`badge ${card.fitScore >= STRONG_FIT ? "badge-accent" : ""}`}>
+                              Fit {card.fitScore}
+                            </span>
+                          )}
+                          {card.value !== null && <span className="tabular-nums text-ink-soft">{rands(card.value)}</span>}
                         </p>
                       )}
                       {card.nextTaskOn && (
