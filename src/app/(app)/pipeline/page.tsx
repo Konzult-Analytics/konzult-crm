@@ -4,6 +4,7 @@ import { requireMfaSession } from "@/lib/auth/guard";
 import { formatDate } from "@/lib/crm/dates";
 import { exitReasonOptions } from "@/lib/crm/lookups";
 import { STAGES, TRACKS, TRACK_LABEL, isTrack, stageLabel } from "@/lib/crm/stages";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import Board, { type BoardCard } from "./Board";
 
 export default async function PipelinePage({ searchParams }: { searchParams: Promise<{ track?: string }> }) {
@@ -12,13 +13,17 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const { supabase } = await requireMfaSession();
 
   const [{ data: journeys, error }, reasons] = await Promise.all([
-    supabase
-      .from("journey_overview")
-      .select(
-        "id, person_id, organisation_id, display_name, organisation_name, stage, status, source, last_touch_at, stage_changed_at, next_task_on, exit_reason, exit_side, exit_stage, parked_until, closed_at"
-      )
-      .eq("track", track)
-      .order("stage_changed_at"),
+    fetchAll((from, to) =>
+      supabase
+        .from("journey_overview")
+        .select(
+          "id, person_id, organisation_id, display_name, organisation_name, stage, status, source, last_touch_at, stage_changed_at, next_task_on, exit_reason, exit_side, exit_stage, parked_until, closed_at, fit_score"
+        )
+        .eq("track", track)
+        .order("stage_changed_at")
+        .order("id")
+        .range(from, to)
+    ),
     exitReasonOptions(supabase),
   ]);
   if (error) console.error("pipeline failed", error);
@@ -37,6 +42,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       lastTouchAt: j.last_touch_at,
       stageChangedAt: j.stage_changed_at,
       nextTaskOn: j.next_task_on,
+      fitScore: j.fit_score,
     }));
   const closed = all
     .filter((j) => j.status !== "open")

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LINKS = [
+// `short` keeps all five tabs on a phone screen.
+const LINKS: { href: string; label: string; short?: string }[] = [
   { href: "/", label: "Today" },
   { href: "/pipeline", label: "Pipeline" },
   { href: "/people", label: "People" },
-  { href: "/organisations", label: "Organisations" },
+  { href: "/organisations", label: "Organisations", short: "Orgs" },
+  { href: "/insights", label: "Insights" },
 ];
 
 export default function Nav() {
@@ -21,11 +23,19 @@ export default function Nav() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${
+            aria-label={l.short ? l.label : undefined}
+            className={`whitespace-nowrap border-b-2 px-2 py-2.5 text-sm font-medium sm:px-3 ${
               active ? "border-accent text-ink" : "border-transparent text-ink-soft hover:text-ink"
             }`}
           >
-            {l.label}
+            {l.short ? (
+              <>
+                <span className="sm:hidden">{l.short}</span>
+                <span className="hidden sm:inline">{l.label}</span>
+              </>
+            ) : (
+              l.label
+            )}
           </Link>
         );
       })}

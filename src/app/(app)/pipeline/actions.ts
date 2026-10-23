@@ -71,6 +71,71 @@ export async function closeJourney(journeyId: string, _prev: FormState, formData
   return null;
 }
 
+/** From Today's "no reply after 3 tries": close as Never responded in one tap. */
+export async function closeNeverResponded(formData: FormData): Promise<void> {
+  const journeyId = String(formData.get("journey_id") ?? "");
+  const { supabase, journey } = await loadJourney(journeyId);
+  if (!journey || journey.status !== "open") return;
+  const { data: reason } = await supabase
+    .from("exit_reasons")
+    .select("id")
+    .eq("label", "Never responded")
+    .maybeSingle();
+  if (!reason) {
+    console.error("never-responded reason missing");
+    return;
+  }
+  const { error } = await supabase
+    .from("journeys")
+    .update({
+      status: "lost",
+      exit_reason_id: reason.id,
+      exit_stage: journey.stage,
+      closed_at: new Date().toISOString(),
+      exit_note: "Closed from Today after 3 unanswered messages",
+    })
+    .eq("id", journeyId);
+  if (error) console.error("close never-responded failed", error);
+  revalidatePath("/", "layout");
+}
+
+// An unanswered question isn't submitted at all, so every answer is optional.
+const fitAnswer = z
+  .union([z.literal(""), z.enum(["yes", "maybe", "no"])])
+  .optional()
+  .transform((v) => v || null);
+
+const optionalNumber = (max: number, integer: boolean) =>
+  z
+    .union([z.literal(""), z.coerce.number().min(0).max(max)])
+    .optional()
+    .refine((v) => v === undefined || v === "" || !integer || Number.isInteger(v))
+    .transform((v) => (v === undefined || v === "" ? null : Math.round(v * 100) / 100));
+
+const fitSchema = z.object({
+  fit_need: fitAnswer,
+  fit_timing: fitAnswer,
+  fit_budget: fitAnswer,
+  fit_decision: fitAnswer,
+  chance_pct: optionalNumber(100, true),
+  value_estimate: optionalNumber(100_000_000, false),
+});
+
+export async function saveFit(journeyId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { supabase, journey } = await loadJourney(journeyId);
+  if (!journey) return { error: "That journey no longer exists." };
+  const parsed = fitSchema.safeParse(fields(formData));
+  if (!parsed.success) return { error: "Chance must be 0–100 and the value a positive number." };
+
+  const { error } = await supabase.from("journeys").update(parsed.data).eq("id", journeyId);
+  if (error) {
+    console.error("save fit failed", error);
+    return { error: "Couldn't save the fit check. Try again." };
+  }
+  revalidatePath("/", "layout");
+  return null;
+}
+
 export async function reopenJourney(journeyId: string): Promise<FormState> {
   const { supabase, journey } = await loadJourney(journeyId);
   if (!journey) return { error: "That journey no longer exists." };

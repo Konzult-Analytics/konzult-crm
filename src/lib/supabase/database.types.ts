@@ -349,6 +349,11 @@ export type Database = {
           exit_note: string | null
           exit_reason_id: string | null
           exit_stage: string | null
+          fit_budget: string | null
+          fit_decision: string | null
+          fit_need: string | null
+          fit_score: number | null
+          fit_timing: string | null
           id: string
           opened_at: string
           organisation_id: string | null
@@ -374,6 +379,11 @@ export type Database = {
           exit_note?: string | null
           exit_reason_id?: string | null
           exit_stage?: string | null
+          fit_budget?: string | null
+          fit_decision?: string | null
+          fit_need?: string | null
+          fit_score?: number | null
+          fit_timing?: string | null
           id?: string
           opened_at?: string
           organisation_id?: string | null
@@ -399,6 +409,11 @@ export type Database = {
           exit_note?: string | null
           exit_reason_id?: string | null
           exit_stage?: string | null
+          fit_budget?: string | null
+          fit_decision?: string | null
+          fit_need?: string | null
+          fit_score?: number | null
+          fit_timing?: string | null
           id?: string
           opened_at?: string
           organisation_id?: string | null
@@ -650,6 +665,7 @@ export type Database = {
           kind: string
           origin: string
           person_id: string | null
+          repeat_rule: string | null
           status: string
           title: string
           updated_at: string
@@ -666,6 +682,7 @@ export type Database = {
           kind?: string
           origin?: string
           person_id?: string | null
+          repeat_rule?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -682,6 +699,7 @@ export type Database = {
           kind?: string
           origin?: string
           person_id?: string | null
+          repeat_rule?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -777,6 +795,7 @@ export type Database = {
           exit_reason: string | null
           exit_side: string | null
           exit_stage: string | null
+          fit_score: number | null
           id: string | null
           last_touch_at: string | null
           next_task_on: string | null
