@@ -10,6 +10,7 @@ import { EMAIL } from "@/lib/import/normalize";
 import { ImportError, parseImportFile } from "@/lib/import/parse";
 import { buildPlan, invitersOf, type ImportChoices, type Inviter } from "@/lib/import/plan";
 import { IMPORT_KINDS, type ParsedFile } from "@/lib/import/types";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 5000;
@@ -36,8 +37,10 @@ export type ImportSummary = {
 
 async function existing(supabase: Supabase): Promise<{ people: ExistingPerson[]; organisations: ExistingOrganisation[] }> {
   const [{ data: people, error: peopleError }, { data: organisations, error: orgError }] = await Promise.all([
-    supabase.from("people").select("id, first_name, last_name, email, phone, organisations(name)"),
-    supabase.from("organisations").select("id, name"),
+    fetchAll((from, to) =>
+      supabase.from("people").select("id, first_name, last_name, email, phone, organisations(name)").order("id").range(from, to)
+    ),
+    fetchAll((from, to) => supabase.from("organisations").select("id, name").order("id").range(from, to)),
   ]);
   if (peopleError || orgError) throw new Error("couldn't load existing contacts");
   return {

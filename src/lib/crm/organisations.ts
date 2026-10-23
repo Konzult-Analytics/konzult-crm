@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 /** The organisation with this name (any capitalisation), created if it doesn't exist yet. */
 export async function findOrCreateOrganisation(
@@ -8,8 +9,10 @@ export async function findOrCreateOrganisation(
 ): Promise<string | null> {
   const wanted = name.trim().toLowerCase();
   const find = async () => {
-    const { data } = await supabase.from("organisations").select("id, name");
-    return data?.find((o) => o.name.trim().toLowerCase() === wanted)?.id ?? null;
+    const { data } = await fetchAll((from, to) =>
+      supabase.from("organisations").select("id, name").order("id").range(from, to)
+    );
+    return data.find((o) => o.name.trim().toLowerCase() === wanted)?.id ?? null;
   };
 
   const existing = await find();

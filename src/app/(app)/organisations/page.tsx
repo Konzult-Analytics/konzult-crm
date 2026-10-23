@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { requireMfaSession } from "@/lib/auth/guard";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { createOrganisation } from "./actions";
 import OrganisationForm from "./OrganisationForm";
 
 export default async function OrganisationsPage() {
   const { supabase } = await requireMfaSession();
-  const { data: organisations, error } = await supabase
-    .from("organisations")
-    .select("id, name, industry, city, people(count)")
-    .order("name");
+  const { data: organisations, error } = await fetchAll((from, to) =>
+    supabase
+      .from("organisations")
+      .select("id, name, industry, city, people(count)")
+      .order("name")
+      .order("id")
+      .range(from, to)
+  );
   if (error) console.error("organisations list failed", error);
 
   return (

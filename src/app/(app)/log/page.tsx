@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireMfaSession } from "@/lib/auth/guard";
 import { personOptions } from "@/lib/crm/lookups";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import LogForm, { type OpenJourney } from "./LogForm";
 
 export default async function LogPage({ searchParams }: { searchParams: Promise<{ person?: string }> }) {
@@ -9,7 +10,15 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
 
   const [people, { data: journeys }] = await Promise.all([
     personOptions(supabase),
-    supabase.from("journeys").select("id, person_id, track, stage").eq("status", "open").not("person_id", "is", null),
+    fetchAll((from, to) =>
+      supabase
+        .from("journeys")
+        .select("id, person_id, track, stage")
+        .eq("status", "open")
+        .not("person_id", "is", null)
+        .order("id")
+        .range(from, to)
+    ),
   ]);
 
   const chosen = people.find((p) => p.id === person) ?? null;
