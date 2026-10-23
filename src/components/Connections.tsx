@@ -27,10 +27,10 @@ const KINDS = {
   website: {
     title: "Website enquiries",
     steps: [
-      "In Framer, open the contact form → Send To → Webhook.",
+      "In Framer, select the contact form, press Add… next to Send To, and choose Webhook.",
       "Paste the address below as the URL, and the key as the Secret.",
-      "Name the fields name, email, phone, business, message and marketing_consent (an unticked box), plus a hidden field called website for spam.",
-      "Submit a test enquiry. It appears under New enquiries on Today.",
+      "Fields called Name, Email, Phone (or Contact Number), Business, Message and marketing_consent (an unticked box) fill those details; any other question is kept in the enquiry as “Question: answer”. Framer adds its own hidden spam traps.",
+      "Publish the site, then submit a test enquiry. It appears under New enquiries on Today.",
     ],
   },
 } as const;

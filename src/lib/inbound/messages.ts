@@ -136,6 +136,9 @@ const FIELD_NAMES: Record<string, keyof WebsiteLead | "honeypot"> = {
   phone: "phone",
   cell: "phone",
   mobile: "phone",
+  "contact number": "phone",
+  "phone number": "phone",
+  "cell number": "phone",
   business: "business",
   company: "business",
   message: "message",
@@ -147,6 +150,16 @@ const FIELD_NAMES: Record<string, keyof WebsiteLead | "honeypot"> = {
 
 const YES = new Set(["true", "on", "yes", "1", "checked"]);
 
+// Framer hides these on every form to catch bots; they never carry a real answer.
+const FRAMER_TRAPS = new Set(["subject", "title", "description", "feedback", "notes", "details", "remarks", "comments"]);
+const MAX_OTHER_ANSWERS = 10;
+
+function answerText(v: unknown): string | null {
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (Array.isArray(v)) return text(v.filter((x) => typeof x === "string" || typeof x === "number").join(", "), 300);
+  return text(v, 300);
+}
+
 /** Framer posts the form's fields by their names; the new website will post the same. */
 export function readWebsiteLead(body: unknown, submissionId: string): WebsiteLead {
   const parsed = websiteLeadSchema.safeParse(flattenWebsite(body, submissionId));
@@ -156,9 +169,18 @@ export function readWebsiteLead(body: unknown, submissionId: string): WebsiteLea
 function flattenWebsite(body: unknown, submissionId: string): WebsiteLead {
   if (!isObject(body)) return { event: "ignored" };
   const fields: Json = {};
+  // Questions the CRM has no column for (say, a preferred contact time) are kept as "Question: answer" lines.
+  const others: string[] = [];
   for (const [k, v] of Object.entries(body)) {
-    const name = FIELD_NAMES[k.trim().toLowerCase()];
-    if (name) fields[name] = v;
+    const key = k.trim().toLowerCase();
+    const name = FIELD_NAMES[key];
+    if (name) {
+      fields[name] = v;
+    } else if (!FRAMER_TRAPS.has(key) && others.length < MAX_OTHER_ANSWERS) {
+      const label = text(k.replace(/\s+/g, " "), 60);
+      const value = answerText(v);
+      if (label && value) others.push(`${label}: ${value}`);
+    }
   }
   if (text(fields.honeypot, 200)) return { event: "spam" };
   const lead: WebsiteLead = {
@@ -168,7 +190,7 @@ function flattenWebsite(body: unknown, submissionId: string): WebsiteLead {
     email: email(fields.email),
     phone: text(fields.phone, 40),
     business: text(fields.business, 160),
-    message: text(fields.message, 4000),
+    message: text([text(fields.message, 4000), others.join("\n")].filter(Boolean).join("\n\n"), 4000),
     marketing_consent: fields.marketing_consent === true || YES.has(String(fields.marketing_consent ?? "").trim().toLowerCase()),
   };
   // Nothing to reply to means nothing to keep.
