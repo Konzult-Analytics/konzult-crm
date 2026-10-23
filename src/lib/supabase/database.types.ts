@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_sends: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          expires_at: string
+          first_opened_at: string | null
+          id: string
+          interaction_id: string | null
+          journey_id: string | null
+          last_opened_at: string | null
+          open_count: number
+          person_id: string
+          revoked_at: string | null
+          sent_at: string
+          share_token: string
+          target_url: string
+          updated_at: string
+          updated_by: string | null
+          window_opens: number
+          window_started_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          expires_at: string
+          first_opened_at?: string | null
+          id?: string
+          interaction_id?: string | null
+          journey_id?: string | null
+          last_opened_at?: string | null
+          open_count?: number
+          person_id: string
+          revoked_at?: string | null
+          sent_at?: string
+          share_token: string
+          target_url: string
+          updated_at?: string
+          updated_by?: string | null
+          window_opens?: number
+          window_started_at?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          expires_at?: string
+          first_opened_at?: string | null
+          id?: string
+          interaction_id?: string | null
+          journey_id?: string | null
+          last_opened_at?: string | null
+          open_count?: number
+          person_id?: string
+          revoked_at?: string | null
+          sent_at?: string
+          share_token?: string
+          target_url?: string
+          updated_at?: string
+          updated_by?: string | null
+          window_opens?: number
+          window_started_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_sends_workspace_id_document_id_fkey"
+            columns: ["workspace_id", "document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "asset_sends_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_sends_workspace_id_interaction_id_fkey"
+            columns: ["workspace_id", "interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "asset_sends_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journey_overview"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "asset_sends_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journeys"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "asset_sends_workspace_id_person_id_fkey"
+            columns: ["workspace_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_at: string
@@ -64,6 +179,117 @@ export type Database = {
             columns: ["workspace_id", "import_id"]
             isOneToOne: false
             referencedRelation: "imports"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          archived: boolean
+          audience: string | null
+          content_type: string | null
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          is_library: boolean
+          journey_id: string | null
+          kind: string
+          notes: string | null
+          organisation_id: string | null
+          person_id: string | null
+          service: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+          url: string | null
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          archived?: boolean
+          audience?: string | null
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          is_library?: boolean
+          journey_id?: string | null
+          kind: string
+          notes?: string | null
+          organisation_id?: string | null
+          person_id?: string | null
+          service?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+          version?: number
+          workspace_id?: string
+        }
+        Update: {
+          archived?: boolean
+          audience?: string | null
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          is_library?: boolean
+          journey_id?: string | null
+          kind?: string
+          notes?: string | null
+          organisation_id?: string | null
+          person_id?: string | null
+          service?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journey_overview"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "documents_workspace_id_journey_id_fkey"
+            columns: ["workspace_id", "journey_id"]
+            isOneToOne: false
+            referencedRelation: "journeys"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "documents_workspace_id_organisation_id_fkey"
+            columns: ["workspace_id", "organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "documents_workspace_id_person_id_fkey"
+            columns: ["workspace_id", "person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["workspace_id", "id"]
           },
         ]
@@ -205,6 +431,7 @@ export type Database = {
           organisation_id: string | null
           outcome: string | null
           summary: string | null
+          template_id: string | null
           type: string
           updated_at: string
           updated_by: string | null
@@ -225,6 +452,7 @@ export type Database = {
           organisation_id?: string | null
           outcome?: string | null
           summary?: string | null
+          template_id?: string | null
           type: string
           updated_at?: string
           updated_by?: string | null
@@ -245,6 +473,7 @@ export type Database = {
           organisation_id?: string | null
           outcome?: string | null
           summary?: string | null
+          template_id?: string | null
           type?: string
           updated_at?: string
           updated_by?: string | null
@@ -256,6 +485,13 @@ export type Database = {
             columns: ["workspace_id", "campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "interactions_template_fkey"
+            columns: ["workspace_id", "template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
             referencedColumns: ["workspace_id", "id"]
           },
           {
@@ -636,6 +872,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           decided_on: string | null
+          document_id: string | null
           id: string
           journey_id: string
           notes: string | null
@@ -651,6 +888,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           decided_on?: string | null
+          document_id?: string | null
           id?: string
           journey_id: string
           notes?: string | null
@@ -666,6 +904,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           decided_on?: string | null
+          document_id?: string | null
           id?: string
           journey_id?: string
           notes?: string | null
@@ -678,6 +917,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "proposals_document_fkey"
+            columns: ["workspace_id", "document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "proposals_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -819,6 +1065,59 @@ export type Database = {
           },
         ]
       }
+      templates: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          purpose: string
+          sort_order: number
+          subject: string | null
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          purpose: string
+          sort_order?: number
+          subject?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          purpose?: string
+          sort_order?: number
+          subject?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -916,6 +1215,20 @@ export type Database = {
     }
     Functions: {
       import_contacts: { Args: { p_import: Json; p_rows: Json }; Returns: Json }
+      share_info: {
+        Args: { p_token: string }
+        Returns: {
+          state: string
+          title: string
+        }[]
+      }
+      share_open: {
+        Args: { p_count?: boolean; p_token: string }
+        Returns: {
+          state: string
+          target_url: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

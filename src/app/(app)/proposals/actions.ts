@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireMfaSession } from "@/lib/auth/guard";
@@ -14,6 +15,7 @@ import {
   requiredText,
   type FormState,
 } from "@/lib/crm/forms";
+import { discardFile, storeFile } from "@/lib/supabase/storage";
 
 const proposalSchema = z.object({
   title: requiredText(120),
@@ -41,12 +43,23 @@ export async function addProposal(journeyId: string, _prev: FormState, formData:
     .maybeSingle();
   if (!journey || journey.track !== "client") return { error: "Proposals belong to client journeys." };
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("proposals")
-    .insert({ ...proposal, value: Math.round(proposal.value * 100) / 100, journey_id: journeyId });
-  if (error) {
+    .insert({ ...proposal, value: Math.round(proposal.value * 100) / 100, journey_id: journeyId })
+    .select("id")
+    .single();
+  if (error || !saved) {
     console.error("add proposal failed", error);
     return { error: "Couldn't save the proposal. Try again." };
+  }
+
+  const file = formData.get("file");
+  if (file instanceof File && file.size > 0) {
+    const fileError = await attachProposalFile(saved.id, journeyId, journey.person_id, proposal.title, file);
+    if (fileError) {
+      revalidatePath("/", "layout");
+      return { error: `The proposal is saved, but ${fileError} Add the file under Documents.` };
+    }
   }
 
   if (follow_up_on) {
@@ -64,6 +77,42 @@ export async function addProposal(journeyId: string, _prev: FormState, formData:
     }
   }
   revalidatePath("/", "layout");
+  return null;
+}
+
+/** Stores the proposal's file as a client document and links it. Returns a sentence on failure. */
+async function attachProposalFile(
+  proposalId: string,
+  journeyId: string,
+  personId: string | null,
+  title: string,
+  file: File
+): Promise<string | null> {
+  const { supabase } = await requireMfaSession();
+  const id = randomUUID();
+  const stored = await storeFile(supabase, id, 1, file);
+  if ("error" in stored) return `the file wasn't uploaded: ${stored.error}`;
+  const { error } = await supabase.from("documents").insert({
+    id,
+    kind: "proposal",
+    title,
+    journey_id: journeyId,
+    person_id: personId,
+    storage_path: stored.path,
+    file_name: stored.fileName,
+    content_type: stored.contentType,
+    size_bytes: stored.size,
+  });
+  if (error) {
+    console.error("proposal document failed", error);
+    await discardFile(supabase, stored.path);
+    return "the file couldn't be saved.";
+  }
+  const { error: linkError } = await supabase.from("proposals").update({ document_id: id }).eq("id", proposalId);
+  if (linkError) {
+    console.error("link proposal document failed", linkError);
+    return "the file isn't linked to it.";
+  }
   return null;
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ClientCare from "@/components/ClientCare";
+import Documents from "@/components/Documents";
 import JourneyControls from "@/components/JourneyControls";
 import Proposals from "@/components/Proposals";
 import { requireMfaSession } from "@/lib/auth/guard";
@@ -23,7 +24,7 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
     .maybeSingle();
   if (!org) notFound();
 
-  const [{ data: people }, { data: journeys }, { data: details }, { data: proposals }, reasons] = await Promise.all([
+  const [{ data: people }, { data: journeys }, { data: details }, { data: proposals }, { data: documents }, reasons] = await Promise.all([
     supabase.from("people").select("id, first_name, last_name, role_title").eq("organisation_id", id).order("first_name"),
     supabase
       .from("journey_overview")
@@ -38,10 +39,16 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
       .is("person_id", null),
     supabase
       .from("proposals")
-      .select("id, journey_id, title, value, sent_on, status, decided_on, notes, journeys!inner(organisation_id, person_id)")
+      .select("id, journey_id, title, value, sent_on, status, decided_on, notes, document_id, journeys!inner(organisation_id, person_id)")
       .eq("journeys.organisation_id", id)
       .is("journeys.person_id", null)
       .order("sent_on"),
+    supabase
+      .from("documents")
+      .select("id, title, kind, file_name, size_bytes, url, version, created_at")
+      .eq("organisation_id", id)
+      .eq("archived", false)
+      .order("created_at", { ascending: false }),
     exitReasonOptions(supabase),
   ]);
 
@@ -142,6 +149,11 @@ export default async function OrganisationPage({ params }: { params: Promise<{ i
           </ul>
         </section>
       )}
+
+      <section className="space-y-3">
+        <h2 className="section-title">Documents</h2>
+        <Documents documents={documents ?? []} organisationId={orgId} />
+      </section>
 
       <details className="card">
         <summary className="cursor-pointer text-sm font-medium">Edit details</summary>
